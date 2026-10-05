@@ -64,15 +64,17 @@ class Frog:
         self.animation.play("jump")
 
     def attack(self):
-        print("ATTACK!")
         self.animation.play("attack")
 
     def update(self, dt):
         self.animation.update(dt)
 
         if self.animation.is_finished():
-            self.animation.play("idle")
+            if self.animation.current_animation == "jump":
+                self.animation.play("idle")
 
+            elif self.animation.current_animation == "attack":
+                self.animation.play("idle")
     def draw(self, screen, size=None):
         frame = self.animation.get_current_frame()
 

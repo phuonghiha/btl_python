@@ -36,6 +36,8 @@ while running:
 
             if event.key == pygame.K_a:
                 frog.attack()
+            if event.key== pygame.K_s:
+                frog.idle()
 
     frog.update(dt)
 
