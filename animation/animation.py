@@ -25,9 +25,8 @@ class Animation:
 
         frame_time = 1 / self.fps
 
-        if self.timer >= frame_time:
+        while self.timer >= frame_time:
             self.timer -= frame_time
-
             self.current_frame += 1
 
             if self.current_frame >= len(self.frames):
@@ -38,6 +37,7 @@ class Animation:
                 else:
                     self.current_frame = len(self.frames) - 1
                     self.finished = True
+                    break
 
     def get_current_frame(self):
         return self.frames[self.current_frame]
