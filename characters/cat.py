@@ -19,10 +19,10 @@ class Cat:
         # Ảnh mèo ngồi ban đầu
         self.animation.load_image(
             "sit",
-            "assets/sprites/cat/stand_up/Cat_1.png"
+            "assets/sprites/cat/stand_up/n_1.png"
         )
 
-        # Animation nhổm dậy
+        # Animation đứng dậy: n_1 -> n_6
         self.animation.load_folder(
             "stand_up",
             "assets/sprites/cat/stand_up",
@@ -30,7 +30,7 @@ class Cat:
             loop=False
         )
 
-        # Animation đi bộ
+        # Animation đi: w_1 -> w_5
         self.animation.load_folder(
             "walk",
             "assets/sprites/cat/walk",
@@ -40,6 +40,7 @@ class Cat:
 
         self.animation.play("sit")
 
+
     def stand_up(self):
         if self.state != "sit":
             return
@@ -47,28 +48,37 @@ class Cat:
         self.state = "stand_up"
         self.animation.play("stand_up")
 
+
     def walk(self):
-        # Chỉ đi khi đã nhổm dậy xong
+        # Chỉ đi sau khi đứng dậy xong
         if self.state != "ready":
             return
 
         self.state = "walk"
         self.animation.play("walk")
 
+
     def update(self, dt):
+
         if self.state == "stand_up":
+
             self.animation.update(dt)
 
+            # n_1 -> ... -> n_6 chạy xong
             if self.animation.is_finished():
                 self.state = "ready"
 
+
         elif self.state == "walk":
+
             self.animation.update(dt)
 
-            # Di chuyển sang phải
+            # Mèo di chuyển sang phải
             self.x += self.speed * dt
 
+
     def draw(self, screen, size):
+
         frame = self.animation.get_current_frame()
 
         if frame is None:

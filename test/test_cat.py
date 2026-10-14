@@ -6,11 +6,12 @@ from characters.cat import Cat
 pygame.init()
 
 screen = pygame.display.set_mode((1672, 940))
-pygame.display.set_caption("Test Cat")
+pygame.display.set_caption("Test Cat Animation")
 
 clock = pygame.time.Clock()
 
-cat = Cat(500, 500)
+# Vị trí ban đầu của mèo
+cat = Cat(500, 700)
 
 running = True
 
@@ -25,18 +26,21 @@ while running:
 
         if event.type == pygame.KEYDOWN:
 
-            # SPACE: nhổm dậy
+            # SPACE: mèo đứng dậy
             if event.key == pygame.K_SPACE:
                 cat.stand_up()
 
-            # RIGHT: bắt đầu đi
-            if event.key == pygame.K_RIGHT:
+            # RIGHT: mèo bắt đầu đi
+            elif event.key == pygame.K_RIGHT:
                 cat.walk()
 
+    # Cập nhật animation + vị trí mèo
     cat.update(dt)
 
+    # Nền xanh
     screen.fill((100, 180, 100))
 
+    # Vẽ mèo
     cat.draw(screen, (240, 360))
 
     pygame.display.flip()
