@@ -1,0 +1,17 @@
+
+SCREEN_WIDTH = 1940
+SCREEN_HEIGHT = 1672
+
+FPS = 60
+GAME_TITLE = "Hanh trinh giai cuu cong chua"
+
+WHITE = (255, 255, 255)
+BLACK = (30, 30, 30)
+
+GREEN = (100, 160, 100)
+DARK_GREEN = (45, 95, 60)
+GOLD = (240, 200, 80)
+
+DARK_BLUE = (35, 45, 65)
+BLUE = (65, 100, 145)
+RED = (180, 50, 50)
