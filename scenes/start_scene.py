@@ -1,71 +1,161 @@
 
+import os
 import pygame
 
 from scene import Scene
 from settings import (
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
-    DARK_BLUE,
+    DARK_BROWN,
+    DARK_GREEN,
     GOLD,
     WHITE,
-    DARK_GREEN,
 )
+
+# Đường dẫn gốc của dự án
+BASE_DIR = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+
+# Ảnh giấy da
+BACKGROUND_PATH = os.path.join(
+    BASE_DIR,
+    "assets",
+    "images",
+    "parchment.png",
+)
+
+# Font tiêu đề
+TITLE_FONT_PATH = os.path.join(
+    BASE_DIR,
+    "assets",
+    "fonts",
+    "cinzel",
+    "CinzelDecorative-Black.otf",
+)
+
+# Font lời thoại và nút
+DIALOGUE_FONT_PATH = os.path.join(
+    BASE_DIR,
+    "assets",
+    "fonts",
+    "eb-garamond",
+    "EBGaramond-Regular.ttf",
+)
+
+
+def load_font(path, size, bold=False):
+    """Tải font từ đường dẫn; dùng font hệ thống nếu thiếu."""
+    if os.path.isfile(path):
+        return pygame.font.Font(path, size)
+
+    print(f"Không tìm thấy font: {path}")
+    return pygame.font.SysFont("arial", size, bold=bold)
+
+
+def load_background():
+    """Tải ảnh giấy da và điều chỉnh theo kích thước màn hình."""
+    if os.path.isfile(BACKGROUND_PATH):
+        image = pygame.image.load(
+            BACKGROUND_PATH
+        ).convert()
+
+        return pygame.transform.smoothscale(
+            image,
+            (SCREEN_WIDTH, SCREEN_HEIGHT),
+        )
+
+    print(f"Không tìm thấy ảnh nền: {BACKGROUND_PATH}")
+
+    background = pygame.Surface(
+        (SCREEN_WIDTH, SCREEN_HEIGHT)
+    )
+    background.fill((239, 222, 180))
+    return background
 
 
 class StartScene(Scene):
     def __init__(self, game):
         super().__init__(game)
 
-        self.title_font = pygame.font.Font(None, 86)
-        self.button_font = pygame.font.Font(None, 48)
+        self.background = load_background()
+
+        self.title_font = load_font(
+            TITLE_FONT_PATH, 43
+        )
+        self.button_font = load_font(
+            DIALOGUE_FONT_PATH, 30
+        )
 
         self.start_button = pygame.Rect(
-            SCREEN_WIDTH // 2 - 200,
-            SCREEN_HEIGHT // 2 + 100,
-            400,
-            100,
+            SCREEN_WIDTH // 2 - 175,
+            SCREEN_HEIGHT - 180,
+            350,
+            75,
         )
 
     def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                if self.start_button.collidepoint(event.pos):
-                    self.game.change_scene("intro")
-
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_RETURN:
+        if (
+            event.type == pygame.MOUSEBUTTONDOWN
+            and event.button == 1
+        ):
+            if self.start_button.collidepoint(event.pos):
                 self.game.change_scene("intro")
 
-    def draw(self, screen):
-        screen.fill(DARK_BLUE)
+    def update(self, dt):
+        pass
 
-        title = self.title_font.render(
-            "HANH TRINH GIAI CUU CONG CHUA",
+    def draw(self, screen):
+        screen.blit(self.background, (0, 0))
+
+        title1 = self.title_font.render(
+            "HÀNH TRÌNH GIẢI CỨU",
             True,
-            GOLD,
+            DARK_BROWN,
+        )
+        title2 = self.title_font.render(
+            "CÔNG CHÚA",
+            True,
+            DARK_BROWN,
         )
 
         screen.blit(
-            title,
-            title.get_rect(
-                center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100)
+            title1,
+            title1.get_rect(
+                center=(SCREEN_WIDTH // 2, 235)
+            ),
+        )
+        screen.blit(
+            title2,
+            title2.get_rect(
+                center=(SCREEN_WIDTH // 2, 305)
             ),
         )
 
+        # Vẽ nút bắt đầu
         pygame.draw.rect(
             screen,
             DARK_GREEN,
             self.start_button,
-            border_radius=16,
+            border_radius=12,
+        )
+        pygame.draw.rect(
+            screen,
+            GOLD,
+            self.start_button,
+            width=3,
+            border_radius=12,
         )
 
         text = self.button_font.render(
-            "Bat dau choi",
+            "BẮT ĐẦU CHƠI",
             True,
             WHITE,
         )
 
         screen.blit(
             text,
-            text.get_rect(center=self.start_button.center),
+            text.get_rect(
+                center=self.start_button.center
+            ),
         )

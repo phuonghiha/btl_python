@@ -1,12 +1,12 @@
 
-SCREEN_WIDTH = 1940
-SCREEN_HEIGHT = 1672
+SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 720
 
 FPS = 60
-GAME_TITLE = "Hanh trinh giai cuu cong chua"
+GAME_TITLE = "Hành trình giải cứu công chúa"
 
 WHITE = (255, 255, 255)
-BLACK = (30, 30, 30)
+BLACK = (35, 30, 25)
 
 GREEN = (100, 160, 100)
 DARK_GREEN = (45, 95, 60)
@@ -15,3 +15,7 @@ GOLD = (240, 200, 80)
 DARK_BLUE = (35, 45, 65)
 BLUE = (65, 100, 145)
 RED = (180, 50, 50)
+
+PARCHMENT = (239, 222, 180)
+DARK_BROWN = (92, 59, 34)
+LIGHT_BROWN = (196, 155, 95)

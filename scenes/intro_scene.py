@@ -5,10 +5,19 @@ from scene import Scene
 from settings import (
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
-    DARK_BLUE,
+    DARK_BROWN,
+    DARK_GREEN,
     GOLD,
     WHITE,
-    DARK_GREEN,
+    RED,
+)
+
+# Dùng chung ảnh nền và font đã khai báo trong start_scene.py
+from scenes.start_scene import (
+    load_font,
+    load_background,
+    TITLE_FONT_PATH,
+    DIALOGUE_FONT_PATH,
 )
 
 
@@ -16,58 +25,106 @@ class IntroScene(Scene):
     def __init__(self, game):
         super().__init__(game)
 
-        self.title_font = pygame.font.Font(None, 76)
-        self.dialogue_font = pygame.font.Font(None, 44)
-        self.button_font = pygame.font.Font(None, 44)
+        self.background = load_background()
 
-        self.continue_button = pygame.Rect(
-            SCREEN_WIDTH // 2 - 200,
-            SCREEN_HEIGHT - 220,
-            400,
-            90,
+        self.title_font = load_font(
+            TITLE_FONT_PATH, 38
+        )
+        self.dialogue_font = load_font(
+            DIALOGUE_FONT_PATH, 27
+        )
+        self.button_font = load_font(
+            DIALOGUE_FONT_PATH, 23
+        )
+
+        # Nút nhận chiếu chỉ
+        self.accept_button = pygame.Rect(
+            SCREEN_WIDTH // 2 - 275,
+            SCREEN_HEIGHT - 115,
+            255,
+            65,
+        )
+
+        # Nút từ chối
+        self.refuse_button = pygame.Rect(
+            SCREEN_WIDTH // 2 + 20,
+            SCREEN_HEIGHT - 115,
+            255,
+            65,
         )
 
         self.dialogue_lines = [
-            "Hiep si, ta co mot nhiem vu quan trong giao cho nguoi.",
-            "Cong chua cua vuong quoc da dot nhien mat tich.",
-            "Ta khong biet ai dung sau viec nay.",
-            "Hay den phong cong chua, tim manh moi",
-            "va dua cong chua tro ve an toan.",
+            "Hỡi hiệp sĩ của vương quốc!",
+            "Công chúa đã mất tích một cách bí ẩn.",
+            "Ta giao cho ngươi nhiệm vụ điều tra",
+            "và tìm nàng trở về an toàn.",
+            "Hãy lên đường và khám phá sự thật!",
         ]
 
     def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                if self.continue_button.collidepoint(event.pos):
-                    self.game.change_scene("princess_room")
-
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_RETURN:
+        if (
+            event.type == pygame.MOUSEBUTTONDOWN
+            and event.button == 1
+        ):
+            if self.accept_button.collidepoint(event.pos):
+                # Nhận chiếu chỉ -> phòng công chúa
                 self.game.change_scene("princess_room")
 
-    def draw(self, screen):
-        screen.fill(DARK_BLUE)
+            elif self.refuse_button.collidepoint(event.pos):
+                # Từ chối -> màn hình bắt đầu
+                self.game.change_scene("start")
 
+    def update(self, dt):
+        pass
+
+    def draw(self, screen):
+        # Vẽ nền giấy da
+        screen.blit(self.background, (0, 0))
+
+        # Khung chiếu chỉ
+        panel = pygame.Rect(
+            90,
+            45,
+            SCREEN_WIDTH - 180,
+            SCREEN_HEIGHT - 190,
+        )
+
+        pygame.draw.rect(
+            screen,
+            (247, 235, 204),
+            panel,
+            border_radius=18,
+        )
+        pygame.draw.rect(
+            screen,
+            DARK_BROWN,
+            panel,
+            width=4,
+            border_radius=18,
+        )
+
+        # Tiêu đề
         title = self.title_font.render(
-            "LOI NHAN CUA DUC VUA",
+            "CHIẾU CHỈ HOÀNG GIA",
             True,
-            GOLD,
+            DARK_BROWN,
         )
 
         screen.blit(
             title,
             title.get_rect(
-                center=(SCREEN_WIDTH // 2, 220)
+                center=(SCREEN_WIDTH // 2, 115)
             ),
         )
 
-        y = 420
+        # Nội dung lời thoại
+        y = 205
 
         for line in self.dialogue_lines:
             text = self.dialogue_font.render(
                 line,
                 True,
-                WHITE,
+                DARK_BROWN,
             )
 
             screen.blit(
@@ -77,24 +134,60 @@ class IntroScene(Scene):
                 ),
             )
 
-            y += 65
+            y += 45
 
+        # Vẽ nút nhận chiếu chỉ
         pygame.draw.rect(
             screen,
             DARK_GREEN,
-            self.continue_button,
-            border_radius=16,
+            self.accept_button,
+            border_radius=10,
+        )
+        pygame.draw.rect(
+            screen,
+            GOLD,
+            self.accept_button,
+            width=3,
+            border_radius=10,
         )
 
-        button_text = self.button_font.render(
-            "Tiep tuc",
+        accept_text = self.button_font.render(
+            "NHẬN CHIẾU CHỈ",
             True,
             WHITE,
         )
 
         screen.blit(
-            button_text,
-            button_text.get_rect(
-                center=self.continue_button.center
+            accept_text,
+            accept_text.get_rect(
+                center=self.accept_button.center
+            ),
+        )
+
+        # Vẽ nút từ chối
+        pygame.draw.rect(
+            screen,
+            RED,
+            self.refuse_button,
+            border_radius=10,
+        )
+        pygame.draw.rect(
+            screen,
+            GOLD,
+            self.refuse_button,
+            width=3,
+            border_radius=10,
+        )
+
+        refuse_text = self.button_font.render(
+            "TỪ CHỐI",
+            True,
+            WHITE,
+        )
+
+        screen.blit(
+            refuse_text,
+            refuse_text.get_rect(
+                center=self.refuse_button.center
             ),
         )

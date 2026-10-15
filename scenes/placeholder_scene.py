@@ -5,102 +5,101 @@ from scene import Scene
 from settings import (
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
-    BLUE,
-    WHITE,
+    PARCHMENT,
+    DARK_BROWN,
     DARK_GREEN,
+    RED,
+    WHITE,
 )
 
 
 class PlaceholderScene(Scene):
-    def __init__(self, game, title):
+    def __init__(self, game, scene_name):
         super().__init__(game)
+        self.scene_name = scene_name
 
-        self.title = title
-        self.title_font = pygame.font.Font(None, 72)
-        self.message_font = pygame.font.Font(None, 38)
-
-        self.back_button = pygame.Rect(
-            30, 25, 180, 70
+        self.font = pygame.font.SysFont(
+            "arial", 34, bold=True
         )
-
-        self.test_damage_button = pygame.Rect(
-            30, 115, 300, 70
+        self.small_font = pygame.font.SysFont(
+            "arial", 23
         )
 
     def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                if self.back_button.collidepoint(event.pos):
-                    self.game.change_scene("world_map")
-                    return
+        pass
 
-                # Nut thu nghiem de kiem tra Game Over.
-                if self.test_damage_button.collidepoint(event.pos):
-                    self.game.game_state.take_damage(25)
+    def update(self, dt):
+        pass
 
     def draw(self, screen):
-        screen.fill(BLUE)
+        screen.fill(PARCHMENT)
 
-        title = self.title_font.render(
-            self.title,
+        title = self.font.render(
+            self.scene_name,
             True,
-            WHITE,
+            DARK_BROWN,
         )
-
         screen.blit(
             title,
             title.get_rect(
-                center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 80)
+                center=(SCREEN_WIDTH // 2, 250)
             ),
         )
 
-        message = self.message_font.render(
-            "Day la man choi tam de kiem tra Core",
+        message = self.small_font.render(
+            "Khu vực đang được xây dựng.",
             True,
-            WHITE,
+            DARK_BROWN,
         )
-
         screen.blit(
             message,
             message.get_rect(
-                center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+                center=(SCREEN_WIDTH // 2, 320)
             ),
         )
 
-        pygame.draw.rect(
-            screen,
-            DARK_GREEN,
-            self.back_button,
-            border_radius=12,
-        )
-
-        back_text = self.message_font.render(
-            "Quay lai",
-            True,
-            WHITE,
-        )
-
-        screen.blit(
-            back_text,
-            back_text.get_rect(center=self.back_button.center),
-        )
+        # Thanh máu
+        bar_x = 40
+        bar_y = 35
+        bar_width = 250
+        bar_height = 28
 
         pygame.draw.rect(
             screen,
-            (120, 60, 60),
-            self.test_damage_button,
-            border_radius=12,
+            DARK_BROWN,
+            (bar_x, bar_y, bar_width, bar_height),
+            border_radius=5,
         )
 
-        damage_text = self.message_font.render(
-            "Thu tru HP",
+        health_ratio = (
+            self.game_state.health
+            / self.game_state.max_health
+        )
+
+        current_width = int(
+            (bar_width - 4) * health_ratio
+        )
+
+        if current_width > 0:
+            pygame.draw.rect(
+                screen,
+                RED,
+                (
+                    bar_x + 2,
+                    bar_y + 2,
+                    current_width,
+                    bar_height - 4,
+                ),
+                border_radius=4,
+            )
+
+        health_text = self.small_font.render(
+            f"Máu: {self.game_state.health}/"
+            f"{self.game_state.max_health}",
             True,
-            WHITE,
+            DARK_BROWN,
         )
-
         screen.blit(
-            damage_text,
-            damage_text.get_rect(
-                center=self.test_damage_button.center
-            ),
+            health_text,
+            (bar_x, bar_y + 38),
         )

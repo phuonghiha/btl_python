@@ -26,7 +26,6 @@ class Game:
         self.screen = pygame.display.set_mode(
             (SCREEN_WIDTH, SCREEN_HEIGHT)
         )
-
         pygame.display.set_caption(GAME_TITLE)
 
         self.clock = pygame.time.Clock()
@@ -35,18 +34,18 @@ class Game:
         self.current_scene = None
         self.current_scene_id = None
 
-        # Luu khu vuc truoc khi mo World Map
+        # Khu vực trước khi mở bản đồ
         self.previous_scene_id = "princess_room"
 
-        # Nut World Map o goc tren ben phai
+        # Nút mở bản đồ
         self.map_button = pygame.Rect(
-            SCREEN_WIDTH - 190,
-            25,
-            160,
-            65,
+            SCREEN_WIDTH - 175,
+            20,
+            145,
+            55,
         )
 
-        # Dang ky cac scene
+        # Khởi tạo các scene
         self.scenes = {
             "start": StartScene(self),
             "intro": IntroScene(self),
@@ -54,16 +53,16 @@ class Game:
             "game_over": GameOverScene(self),
 
             "princess_room": PlaceholderScene(
-                self, "Phong cong chua"
+                self, "Phòng công chúa"
             ),
             "spirit_forest": PlaceholderScene(
-                self, "Rung tinh linh"
+                self, "Rừng tinh linh"
             ),
             "poison_swamp": PlaceholderScene(
-                self, "Dam lay doc"
+                self, "Đầm lầy độc"
             ),
             "dragon_cave": PlaceholderScene(
-                self, "Hang dong rong"
+                self, "Hang động của rồng"
             ),
         }
 
@@ -71,10 +70,10 @@ class Game:
 
     def change_scene(self, scene_id):
         if scene_id not in self.scenes:
-            print(f"Khong tim thay scene: {scene_id}")
+            print(f"Không tìm thấy scene: {scene_id}")
             return
 
-        # Ghi nho man dang choi truoc khi mo ban do
+        # Ghi nhớ khu vực trước khi mở bản đồ
         if (
             scene_id == "world_map"
             and self.current_scene_id not in (
@@ -91,9 +90,16 @@ class Game:
         self.current_scene = self.scenes[scene_id]
         self.game_state.current_scene = scene_id
 
+    def restart_game(self):
+        # Đưa toàn bộ trạng thái về ban đầu
+        self.game_state.reset()
+
+        self.previous_scene_id = "princess_room"
+
+        self.change_scene("start")
+
     def draw_map_button(self):
-        # Khong hien nut ban do o man bat dau,
-        # man loi thoai va man ban do.
+        # Không hiện nút bản đồ ở các màn đặc biệt
         if self.current_scene_id in (
             "start",
             "intro",
@@ -106,20 +112,24 @@ class Game:
             self.screen,
             DARK_GREEN,
             self.map_button,
-            border_radius=12,
+            border_radius=10,
         )
 
-        font = pygame.font.Font(None, 32)
+        font = pygame.font.SysFont(
+            "arial", 24, bold=True
+        )
 
         text = font.render(
-            "Ban do",
+            "Bản đồ",
             True,
             WHITE,
         )
 
         self.screen.blit(
             text,
-            text.get_rect(center=self.map_button.center),
+            text.get_rect(
+                center=self.map_button.center
+            ),
         )
 
     def run(self):
@@ -133,7 +143,7 @@ class Game:
                     running = False
                     break
 
-                # Bam nut World Map
+                # Mở bản đồ bằng chuột
                 if (
                     event.type == pygame.MOUSEBUTTONDOWN
                     and event.button == 1
@@ -148,13 +158,15 @@ class Game:
                     self.change_scene("world_map")
                     continue
 
-                # ESC de quay lai man truoc tu World Map
+                # ESC để quay lại khu vực trước đó
                 if (
                     event.type == pygame.KEYDOWN
                     and event.key == pygame.K_ESCAPE
                     and self.current_scene_id == "world_map"
                 ):
-                    self.change_scene(self.previous_scene_id)
+                    self.change_scene(
+                        self.previous_scene_id
+                    )
                     continue
 
                 self.current_scene.handle_event(event)
@@ -162,17 +174,15 @@ class Game:
             if not running:
                 break
 
-            # Cap nhat logic man hien tai
             self.current_scene.update(dt)
 
-            # Het mau thi chuyen sang Game Over
+            # Kiểm tra máu sau khi cập nhật scene
             if (
                 self.game_state.health <= 0
                 and self.current_scene_id != "game_over"
             ):
                 self.change_scene("game_over")
 
-            # Ve man hinh
             self.current_scene.draw(self.screen)
             self.draw_map_button()
 
