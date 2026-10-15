@@ -4,24 +4,19 @@ class GameState:
         self.reset()
 
     def reset(self):
-        # Scene hien tai
         self.current_scene = "start"
 
-        # Mau nguoi choi
         self.max_health = 100
         self.health = 100
 
-        # Vat pham va manh moi
         self.inventory = []
         self.clues = []
         self.completed_puzzles = []
 
-        # Tien trinh cot truyen
         self.has_princess_token = False
         self.has_poison_protection = False
         self.has_holy_sword = False
 
-        # Tien trinh cuoi game
         self.dragon_defeated = False
         self.princess_saved = False
         self.ending = None
