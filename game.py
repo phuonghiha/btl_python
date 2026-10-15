@@ -1,5 +1,6 @@
 
 import pygame
+import os
 
 from settings import (
     SCREEN_WIDTH,
@@ -22,28 +23,38 @@ from scenes.placeholder_scene import PlaceholderScene
 class Game:
     def __init__(self):
         pygame.init()
-
         self.screen = pygame.display.set_mode(
             (SCREEN_WIDTH, SCREEN_HEIGHT)
         )
         pygame.display.set_caption(GAME_TITLE)
-
+        
         self.clock = pygame.time.Clock()
         self.game_state = GameState()
+        
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+
+        map_icon_path = os.path.join(
+            base_dir, "assets", "images", "treasure-map.png"
+        )
+
+        self.map_icon = pygame.image.load(
+            map_icon_path
+        ).convert_alpha()
+
+        self.map_icon = pygame.transform.smoothscale(
+            self.map_icon, (64, 64)
+        )
+
+        self.map_button_rect = self.map_icon.get_rect(
+            topright=(SCREEN_WIDTH - 25, 20)
+        )
+        
 
         self.current_scene = None
         self.current_scene_id = None
 
         # Khu vực trước khi mở bản đồ
         self.previous_scene_id = "princess_room"
-
-        # Nút mở bản đồ
-        self.map_button = pygame.Rect(
-            SCREEN_WIDTH - 175,
-            20,
-            145,
-            55,
-        )
 
         # Khởi tạo các scene
         self.scenes = {
@@ -99,39 +110,16 @@ class Game:
         self.change_scene("start")
 
     def draw_map_button(self):
-        # Không hiện nút bản đồ ở các màn đặc biệt
         if self.current_scene_id in (
-            "start",
-            "intro",
-            "world_map",
-            "game_over",
+            "start", "intro", "world_map", "game_over"
         ):
             return
 
-        pygame.draw.rect(
-            self.screen,
-            DARK_GREEN,
-            self.map_button,
-            border_radius=10,
-        )
-
-        font = pygame.font.SysFont(
-            "arial", 24, bold=True
-        )
-
-        text = font.render(
-            "Bản đồ",
-            True,
-            WHITE,
-        )
-
         self.screen.blit(
-            text,
-            text.get_rect(
-                center=self.map_button.center
-            ),
+            self.map_icon,
+            self.map_button_rect
         )
-
+    
     def run(self):
         running = True
 
@@ -153,7 +141,7 @@ class Game:
                         "world_map",
                         "game_over",
                     )
-                    and self.map_button.collidepoint(event.pos)
+                    and self.map_button_rect.collidepoint(event.pos)
                 ):
                     self.change_scene("world_map")
                     continue

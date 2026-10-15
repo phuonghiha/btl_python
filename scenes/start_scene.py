@@ -22,7 +22,7 @@ BACKGROUND_PATH = os.path.join(
     BASE_DIR,
     "assets",
     "images",
-    "parchment.png",
+    "parchment.jpg",
 )
 
 # Font tiêu đề

@@ -1,15 +1,14 @@
 
+import os
 import pygame
 
 from scene import Scene
-from settings import (
-    SCREEN_WIDTH,
-    SCREEN_HEIGHT,
-    PARCHMENT,
-    DARK_BROWN,
-    DARK_GREEN,
-    GOLD,
-    WHITE,
+from settings import SCREEN_WIDTH, SCREEN_HEIGHT
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MAP_IMAGE_PATH = os.path.join(
+    BASE_DIR, "assets", "images", "Main_map.png"
 )
 
 
@@ -17,124 +16,112 @@ class WorldMap(Scene):
     def __init__(self, game):
         super().__init__(game)
 
-        self.title_font = pygame.font.SysFont(
-            "arial", 38, bold=True
-        )
-        self.button_font = pygame.font.SysFont(
-            "arial", 25, bold=True
-        )
-        self.help_font = pygame.font.SysFont(
-            "arial", 20
+        self.map_image = pygame.image.load(
+            MAP_IMAGE_PATH
+        ).convert()
+
+        # Kích thước gốc của ảnh bản đồ
+        self.original_width, self.original_height = (
+            self.map_image.get_size()
         )
 
-        button_width = 330
-        button_height = 75
-        center_x = SCREEN_WIDTH // 2
+        # Co ảnh vừa màn hình, giữ nguyên tỉ lệ
+        scale = min(
+            SCREEN_WIDTH / self.original_width,
+            SCREEN_HEIGHT / self.original_height
+        )
 
-        self.locations = [
-            (
-                "Phòng công chúa",
-                "princess_room",
-                pygame.Rect(
-                    center_x - button_width // 2,
-                    160,
-                    button_width,
-                    button_height,
-                ),
-            ),
-            (
-                "Rừng tinh linh",
-                "spirit_forest",
-                pygame.Rect(
-                    center_x - button_width // 2,
-                    255,
-                    button_width,
-                    button_height,
-                ),
-            ),
-            (
-                "Đầm lầy độc",
-                "poison_swamp",
-                pygame.Rect(
-                    center_x - button_width // 2,
-                    350,
-                    button_width,
-                    button_height,
-                ),
-            ),
-            (
-                "Hang động của rồng",
-                "dragon_cave",
-                pygame.Rect(
-                    center_x - button_width // 2,
-                    445,
-                    button_width,
-                    button_height,
-                ),
-            ),
-        ]
+        new_width = int(self.original_width * scale)
+        new_height = int(self.original_height * scale)
+
+        self.map_image = pygame.transform.smoothscale(
+            self.map_image,
+            (new_width, new_height)
+        )
+
+        self.map_rect = self.map_image.get_rect(
+            center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+        )
+
+        # Vùng bấm tính theo tọa độ tương đối của ảnh gốc:
+        # (x, y, width, height)
+        self.locations = {
+            "princess_room": (150, 460, 270, 95),
+            "spirit_forest": (600, 510, 235, 90),
+            "poison_swamp": (970, 560,245, 85),
+            "dragon_cave": (1380, 580, 235, 90),
+        }
+
+        self.hovered_location = None
 
     def handle_event(self, event):
-        if (
-            event.type == pygame.MOUSEBUTTONDOWN
-            and event.button == 1
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.game.change_scene(
+                    self.game.previous_scene_id
+                )
+                return
+
+        if event.type == pygame.MOUSEMOTION:
+            self.hovered_location = self.get_location_at(
+                event.pos
+            )
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                location = self.get_location_at(event.pos)
+
+                if location:
+                    self.game.change_scene(location)
+
+    def get_location_at(self, mouse_pos):
+        # Đổi tọa độ màn hình thành tọa độ ảnh gốc
+        if not self.map_rect.collidepoint(mouse_pos):
+            return None
+
+        scale_x = self.original_width / self.map_rect.width
+        scale_y = self.original_height / self.map_rect.height
+
+        image_x = int(
+            (mouse_pos[0] - self.map_rect.left) * scale_x
+        )
+        image_y = int(
+            (mouse_pos[1] - self.map_rect.top) * scale_y
+        )
+
+        for scene_id, (x, y, width, height) in (
+            self.locations.items()
         ):
-            for name, scene_id, rect in self.locations:
-                if rect.collidepoint(event.pos):
-                    self.game.change_scene(scene_id)
-                    return
+            area = pygame.Rect(x, y, width, height)
+
+            if area.collidepoint(image_x, image_y):
+                return scene_id
+
+        return None
 
     def update(self, dt):
         pass
 
     def draw(self, screen):
-        screen.fill(PARCHMENT)
+        screen.fill((30, 40, 50))
 
-        title = self.title_font.render(
-            "BẢN ĐỒ VƯƠNG QUỐC",
+        screen.blit(self.map_image, self.map_rect)
+
+        font = pygame.font.SysFont("arial", 18)
+
+        hint = font.render(
+            "Bam vao dia diem de di chuyen | ESC: Quay lai",
             True,
-            DARK_BROWN,
-        )
-        screen.blit(
-            title,
-            title.get_rect(
-                center=(SCREEN_WIDTH // 2, 85)
-            ),
+            (255, 255, 255)
         )
 
-        for name, scene_id, rect in self.locations:
-            pygame.draw.rect(
-                screen,
-                DARK_GREEN,
-                rect,
-                border_radius=10,
-            )
-            pygame.draw.rect(
-                screen,
-                GOLD,
-                rect,
-                width=3,
-                border_radius=10,
-            )
-
-            text = self.button_font.render(
-                name,
-                True,
-                WHITE,
-            )
-            screen.blit(
-                text,
-                text.get_rect(center=rect.center),
-            )
-
-        help_text = self.help_font.render(
-            "Nhấn ESC để quay lại khu vực trước đó",
-            True,
-            DARK_BROWN,
+        hint_rect = hint.get_rect(
+            center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 20)
         )
-        screen.blit(
-            help_text,
-            help_text.get_rect(
-                center=(SCREEN_WIDTH // 2, 570)
-            ),
+
+        # Nền tối cho dòng hướng dẫn
+        background = hint_rect.inflate(24, 12)
+        pygame.draw.rect(
+            screen, (40, 40, 40), background, border_radius=8
         )
+        screen.blit(hint, hint_rect)
