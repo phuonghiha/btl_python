@@ -193,7 +193,7 @@ class TangramGame:
     def __init__(
         self,
         screen,
-        image_path=r"C:\Users\DELL\btl_python\image\793802490_29353841374216909_1805474976622337015_n.png",
+        image_path= "assets/images/sence_2/793802490_29353841374216909_1805474976622337015_n.png",
         width=1600,
         height=900
     ):
@@ -242,7 +242,7 @@ class TangramGame:
         # Ảnh nền cây cổ thụ KHÔNG có ngôi nhà.
         # Hãy đặt ảnh nền sạch tại đường dẫn này.
         self.bg_no_house_path = (
-            r"C:\Users\DELL\btl_python\image\Khu rừng hồ nước thần tiên.png"
+            "assets/images/sence_2/forest_no_house.png"
         )
 
         self.bg_no_house = pygame.transform.smoothscale(
@@ -336,11 +336,11 @@ class TangramGame:
                 self.selected_piece.update_snap()
                 self.selected_piece = None
 
-        elif (
-            event.type == pygame.KEYDOWN
-            and event.key == pygame.K_r
-        ):
-            self.reset()
+        # elif (
+        #     event.type == pygame.KEYDOWN
+        #     and event.key == pygame.K_r
+        # ):
+        #     self.reset()
 
     def update(self):
         if self.selected_piece is not None:
@@ -485,19 +485,19 @@ class TangramGame:
                 )
             )
 
-            reset_text = self.small_font.render(
-                "Nhấn R để chơi lại",
-                True,
-                (255, 255, 255)
-            )
-
-            self.screen.blit(
-                reset_text,
-                (
-                    self.WIDTH // 2 - reset_text.get_width() // 2,
-                    110
-                )
-            )
+            # reset_text = self.small_font.render(
+            #     "Nhấn R để chơi lại",
+            #     True,
+            #     (255, 255, 255)
+            # )
+            #
+            # self.screen.blit(
+            #     reset_text,
+            #     (
+            #         self.WIDTH // 2 - reset_text.get_width() // 2,
+            #         110
+            #     )
+            # )
 
     def run_frame(self, events):
         for event in events:
@@ -507,17 +507,17 @@ class TangramGame:
         self.draw()
 
 
-if __name__ == "__main__":
+def forest_puzzle():
     pygame.init()
 
-    WIDTH, HEIGHT = 1600, 900
+    WIDTH, HEIGHT = 1280, 700
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("House Tangram Puzzle")
 
     game = TangramGame(
         screen,
-        r"C:\Users\DELL\btl_python\image\793802490_29353841374216909_1805474976622337015_n.png",
+        "assets/images/sence_2/793802490_29353841374216909_1805474976622337015_n.png",
         WIDTH,
         HEIGHT
     )
