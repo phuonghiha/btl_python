@@ -105,6 +105,11 @@ class Game:
         # Đưa toàn bộ trạng thái về ban đầu
         self.game_state.reset()
 
+        for scene in self.scenes.values():
+            reset = getattr(scene, "reset", None)
+            if callable(reset):
+                reset()
+
         self.previous_scene_id = "princess_room"
 
         self.change_scene("start")
