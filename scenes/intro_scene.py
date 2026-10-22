@@ -68,7 +68,7 @@ class IntroScene(Scene):
         ):
             if self.accept_button.collidepoint(event.pos):
                 # Nhận chiếu chỉ -> phòng công chúa
-                self.game.change_scene("princess_room")
+                self.game.change_scene("world_map")
 
             elif self.refuse_button.collidepoint(event.pos):
                 # Từ chối -> màn hình bắt đầu
