@@ -50,23 +50,25 @@ class PrincessRoomScene(Scene):
         self.yarn_image = self._load_prop("Yarn_ball.png")
         self.letter_image = self._load_prop("Letter.png")
         self.scale_image = self._load_prop("Dragon_scale.png")
-        self.chest_closed_scaled = self._scaled(self.chest_closed_image, (155, 128))
-        self.chest_open_scaled = self._scaled(self.chest_open_image, (155, 128))
+        self.magnifier_image = self._load_prop("magnifying glass.png")
+        self.magnifier_icon = self._scaled(self.magnifier_image, (42, 42))
+        self.chest_closed_scaled = self._scaled(self.chest_closed_image, (78, 64))
+        self.chest_open_scaled = self._scaled(self.chest_open_image, (78, 64))
         self.yarn_icon = self._scaled(self.yarn_image, (50, 50))
         self.letter_item_icon = self._scaled(self.letter_image, (80, 48))
         self.letter_panel_image = self._scaled(self.letter_image, (760, 370))
-        self.scale_tiny = self._scaled(self.scale_image, (9, 12))
+        self.scale_tiny = self._scaled(self.scale_image, (6, 8))
         self.scale_found_icon = self._scaled(self.scale_image, (18, 22))
         self.scale_inventory_icon = self._scaled(self.scale_image, (36, 36))
         self.cat = self._make_cat()
         self.cat_x = 930.0
         self.cat_y = 545
-        self.cat_hitbox = pygame.Rect(860, 405, 150, 145)
-        self.chest_hitbox = pygame.Rect(218, 578, 160, 135)
+        self.cat_hitbox = pygame.Rect(880, 440, 100, 100)
+        self.chest_hitbox = pygame.Rect(14, 400, 82, 68)
         self.yarn_hitbox = pygame.Rect(272, 610, 42, 45)
         self.letter_hitbox = pygame.Rect(890, 510, 80, 48)
-        self.magnifier_hitbox = pygame.Rect(580, 635, 54, 30)
-        self.scale_hitbox = pygame.Rect(985, 510, 18, 16)
+        self.magnifier_hitbox = pygame.Rect(580, 635, 42, 42)
+        self.scale_hitbox = pygame.Rect(754, 487, 12, 10)
         self.modal = None
         self.dialogue = ("Hiệp sĩ", "Con mèo này thật là đáng nghi...")
         self.dialog_pages = []
@@ -292,9 +294,11 @@ class PrincessRoomScene(Scene):
             if self.cat_hitbox.collidepoint(pos):
                 self.state.magnifier_active = False
             if self.scale_hitbox.inflate(22, 22).collidepoint(pos) and self.state.magnifier_active and self.state.letter_read:
+                self._move_knight_to((710, 450))
                 self._collect_scale()
             return
         if self.selected_item == "pink_yarn" and self.cat_hitbox.collidepoint(pos):
+            self._move_knight_to((self.cat_x - 340, self.cat_y - 160))
             self.game_state.inventory.remove("pink_yarn")
             self.selected_item = None
             self._say("Mèo", "Meo~ Cuối cùng cũng tìm thấy rồi!", self._start_cat_walk)
@@ -326,19 +330,24 @@ class PrincessRoomScene(Scene):
 
     def _room_click(self, pos):
         if self.state.magnifier_active and self.state.letter_read and self.scale_hitbox.inflate(22, 22).collidepoint(pos):
+            self._move_knight_to((710, 450))
             self._collect_scale()
         elif self.magnifier_hitbox.collidepoint(pos) and not self.state.magnifier_collected:
+            self._move_knight_to((580, 560))
             self.state.magnifier_collected = True
             self._add_item("magnifying_glass")
         elif self.state.letter_revealed and self.letter_hitbox.collidepoint(pos):
+            self._move_knight_to((820, 455))
             self.modal = "letter"
             self.state.letter_read = True
         elif self.cat_hitbox.collidepoint(pos):
+            self._move_knight_to((self.cat_x - 340, self.cat_y - 160))
             if self.selected_item == "pink_yarn":
                 self._use_selected(pos)
             elif not self.state.cat_moved:
                 self._say("Mèo", "Thứ đồ yêu thích màu hồng của ta đâu rồi?", self._mark_cat_questioned)
         elif self.chest_hitbox.collidepoint(pos):
+            self._move_knight_to((self.chest_hitbox.right + 8, self.chest_hitbox.bottom - 130))
             if not self.state.cat_questioned:
                 self._say("Hiệp sĩ", "Ta nên hỏi con mèo kia xem nó biết gì trước đã.")
                 return
@@ -348,6 +357,10 @@ class PrincessRoomScene(Scene):
             elif not self.state.pink_yarn_collected:
                 self.state.pink_yarn_collected = True
                 self._add_item("pink_yarn")
+
+    def _move_knight_to(self, position):
+        if self.knight:
+            self.knight.move_to(*position)
 
     def _mark_cat_questioned(self):
         self.state.cat_questioned = True
@@ -385,7 +398,7 @@ class PrincessRoomScene(Scene):
         # missing prop art is drawn as simple, readable fantasy placeholders.
         self._draw_chest(screen)
         if self.knight:
-            self.knight.draw(screen, size=(105, 145))
+            self.knight.draw(screen, size=(315, 435))
         if not self.state.cat_moved:
             self._draw_cat(screen)
         if self.state.letter_revealed:
@@ -394,7 +407,7 @@ class PrincessRoomScene(Scene):
             else:
                 pygame.draw.rect(screen, (231, 207, 151), self.letter_hitbox, border_radius=4)
         if not self.state.magnifier_collected:
-            self._draw_magnifier(screen, (self.magnifier_hitbox.centerx, self.magnifier_hitbox.centery), 0.48)
+            self._draw_magnifier_item(screen, self.magnifier_hitbox.center, 0.48)
         self._draw_scale(screen)
         self._draw_hud(screen)
         if self.modal == "dialog":
@@ -420,23 +433,23 @@ class PrincessRoomScene(Scene):
         if self.cat:
             frame = self.cat.get_current_frame()
             if frame:
-                frame = pygame.transform.smoothscale(frame, (145, 145))
+                frame = pygame.transform.smoothscale(frame, (97, 97))
                 screen.blit(frame, frame.get_rect(midbottom=(int(self.cat_x), self.cat_y)))
         else:
             pygame.draw.ellipse(screen, (210, 157, 127), (self.cat_x - 55, self.cat_y - 95, 110, 80))
             pygame.draw.circle(screen, (225, 178, 145), (int(self.cat_x), self.cat_y - 95), 35)
-        self.cat_hitbox.centerx = int(self.cat_x)
+        self.cat_hitbox.center = (int(self.cat_x), self.cat_y - 50)
 
     def _draw_chest(self, screen):
         image = self.chest_open_scaled if self.state.chest_opened else self.chest_closed_scaled
         if image:
-            screen.blit(image, (220, 585))
+            screen.blit(image, (4, 360))
             if self.state.chest_opened and not self.state.pink_yarn_collected:
-                self._draw_yarn(screen, (296, 642), 25)
+                self._draw_yarn(screen, (55, 428), 18)
         else:
-            x, y = 232, 605
-            pygame.draw.rect(screen, (97, 54, 35), (x, y, 125, 72), border_radius=8)
-            pygame.draw.rect(screen, (175, 119, 61), (x, y, 125, 72), 5, border_radius=8)
+            x, y = 4,360
+            pygame.draw.rect(screen, (97, 54, 35), (x, y, 78, 48), border_radius=8)
+            pygame.draw.rect(screen, (175, 119, 61), (x, y, 78, 48), 4, border_radius=8)
             pygame.draw.rect(screen, (207, 166, 79), (x + 54, y + 20, 18, 24), border_radius=4)
 
     def _draw_yarn(self, screen, center, radius=18):
@@ -462,6 +475,12 @@ class PrincessRoomScene(Scene):
         radius = int(20 * scale)
         pygame.draw.circle(screen, (222, 207, 168), center, radius, max(2, int(5 * scale)))
         pygame.draw.line(screen, (104, 67, 39), (center[0] + radius - 2, center[1] + radius - 2), (center[0] + radius * 2, center[1] + radius * 2), max(3, int(7 * scale)))
+
+    def _draw_magnifier_item(self, screen, center, fallback_scale=1):
+        if self.magnifier_icon:
+            screen.blit(self.magnifier_icon, self.magnifier_icon.get_rect(center=center))
+        else:
+            self._draw_magnifier(screen, center, fallback_scale)
 
     def _draw_lens(self, screen):
         source = screen.copy()
@@ -544,7 +563,7 @@ class PrincessRoomScene(Scene):
             if item == "pink_yarn":
                 self._draw_yarn(screen, (rect.x + 37, rect.centery), 18)
             elif item == "magnifying_glass":
-                self._draw_magnifier(screen, (rect.x + 34, rect.centery), 0.8)
+                self._draw_magnifier_item(screen, (rect.x + 34, rect.centery), 0.8)
             elif item == "red_dragon_scale" and self.scale_inventory_icon:
                 screen.blit(self.scale_inventory_icon, self.scale_inventory_icon.get_rect(center=(rect.x + 36, rect.centery)))
             else:
