@@ -1,526 +1,1757 @@
+import glob
 import math
 import os
-import random
-import sys
 import pygame
 
-pygame.init()
-try:
-    pygame.mixer.init()
-except pygame.error:
-    pass
+from scene import Scene
+from settings import GOLD, WHITE
+from puzzes.forest.for_puz import TangramGame
 
-WIDTH, HEIGHT = 1280, 720
-FPS = 60
-TITLE = "Rừng tinh linh"
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SCENE_DIR = os.path.join(BASE_DIR, "assets", "images", "sence_2")
-HOUSE_PATH = os.path.join(
-    SCENE_DIR, "793802490_29353841374216909_1805474976622337015_n.png"
-)
-NO_HOUSE_PATH = os.path.join(SCENE_DIR, "forest_no_house.png")
 
-WHITE = (250, 248, 224)
-INK = (38, 48, 31)
-DARK = (15, 28, 18)
-GREEN = (42, 82, 45)
-GOLD = (242, 205, 104)
-WOOD = (115, 72, 38)
-WOOD_LIGHT = (197, 151, 91)
-CREAM = (245, 229, 181)
-
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption(TITLE)
-clock = pygame.time.Clock()
-
-def get_font(size, bold=False):
-    # Swamp scene dùng Arial; giữ cùng kiểu chữ để khung thoại đồng bộ.
-    return pygame.font.SysFont("arial", size, bold=bold)
-
-FONT = get_font(25)
-SMALL = get_font(19)
-TITLE_FONT = get_font(32, True)
-PUZZLE_FONT = get_font(22, True)
-
-def load_image(path):
-    if not os.path.isfile(path):
-        return None
-    try:
-        return pygame.image.load(path).convert()
-    except pygame.error:
-        return None
-
-def cover(image, size=(WIDTH, HEIGHT)):
-    iw, ih = image.get_size()
-    scale = max(size[0] / iw, size[1] / ih)
-    scaled = pygame.transform.smoothscale(
-        image, (int(iw * scale), int(ih * scale))
+ROOT = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
     )
-    x = (scaled.get_width() - size[0]) // 2
-    y = (scaled.get_height() - size[1]) // 2
-    return scaled.subsurface((x, y, size[0], size[1])).copy()
+)
 
-house_original = load_image(HOUSE_PATH)
-forest_original = load_image(NO_HOUSE_PATH)
+IMG = os.path.join(
+    ROOT,
+    "assets",
+    "images",
+    "sence_2"
+)
 
-if house_original is not None:
-    HOUSE_BG = cover(house_original)
-else:
-    HOUSE_BG = None
-if forest_original is not None:
-    FOREST_BG = cover(forest_original)
-else:
-    FOREST_BG = None
+SPR = os.path.join(
+    ROOT,
+    "assets",
+    "sprites"
+)
 
-def draw_fallback_forest(surface, with_house=False):
-    surface.fill((107, 166, 190))
-    pygame.draw.rect(surface, (91, 145, 83), (0, 360, WIDTH, 360))
-    for i in range(12):
-        x = i * 120 - 25
-        pygame.draw.rect(surface, (83, 65, 45), (x + 35, 90, 28, 410))
-        pygame.draw.circle(surface, (40, 101, 57), (x + 48, 110), 100)
-        pygame.draw.circle(surface, (55, 125, 64), (x + 5, 175), 76)
-    pygame.draw.polygon(surface, (199, 180, 126),
-                        [(0, 610), (330, 460), (670, 520), (1000, 410),
-                         (1280, 470), (1280, 720), (0, 720)])
-    if with_house:
-        pygame.draw.rect(surface, (125, 79, 49), (760, 205, 190, 175))
-        pygame.draw.polygon(surface, (71, 52, 45),
-                            [(730, 220), (850, 115), (980, 220)])
-        pygame.draw.rect(surface, (243, 190, 78), (815, 260, 38, 55))
-        pygame.draw.rect(surface, (243, 190, 78), (875, 260, 38, 55))
+HOUSE = os.path.join(
+    IMG,
+    "793802490_29353841374216909_1805474976622337015_n.png"
+)
 
-if HOUSE_BG is None:
-    HOUSE_BG = pygame.Surface((WIDTH, HEIGHT))
-    draw_fallback_forest(HOUSE_BG, True)
-if FOREST_BG is None:
-    FOREST_BG = pygame.Surface((WIDTH, HEIGHT))
-    draw_fallback_forest(FOREST_BG, False)
+FOREST = os.path.join(
+    IMG,
+    "forest_no_house.png"
+)
 
-def draw_text(surface, text, font, color, pos, center=False):
-    rendered = font.render(text, True, color)
-    rect = rendered.get_rect()
-    if center:
-        rect.center = pos
-    else:
-        rect.topleft = pos
-    surface.blit(rendered, rect)
-    return rect
+SPIRIT_SHEET = os.path.join(
+    SPR,
+    "spirit",
+    "new spirit.png"
+)
 
-def wrap_text(text, font, max_width):
-    words = text.split()
-    lines = []
-    current = ""
-    for word in words:
-        test = word if not current else current + " " + word
-        if font.size(test)[0] <= max_width:
-            current = test
-        else:
-            if current:
-                lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-    return lines
+KNIGHT_DIR = os.path.join(
+    SPR,
+    "knight"
+)
 
-def draw_dialog(surface, speaker, text, progress=None):
-    # Khung thoại xanh đậm, viền vàng kem theo phong cách fantasy của swamp scene.
-    panel = pygame.Surface((WIDTH - 100, 190), pygame.SRCALPHA)
-    panel.fill((15, 28, 18, 224))
-    pygame.draw.rect(panel, GOLD, panel.get_rect(), 3, border_radius=14)
-    pygame.draw.rect(panel, (93, 122, 74), (12, 12, panel.get_width()-24, 42),
-                     border_radius=8)
-    name = get_font(23, True).render(speaker, True, GOLD)
-    panel.blit(name, (28, 18))
-    lines = wrap_text(text, FONT, WIDTH - 170)
-    visible = text if progress is None else text[:progress]
-    lines = wrap_text(visible, FONT, WIDTH - 170)
-    for i, line in enumerate(lines[:3]):
-        panel.blit(FONT.render(line, True, WHITE), (28, 69 + i * 34))
-    screen.blit(panel, (50, HEIGHT - 215))
-    draw_text(screen, "ENTER / SPACE / click để tiếp tục", SMALL, WHITE,
-              (WIDTH - 365, HEIGHT - 48))
 
-def draw_knight_silhouette(surface, x, y, scale=1.0, alpha=220):
-    layer = pygame.Surface((180, 260), pygame.SRCALPHA)
-    c = (37, 44, 47, alpha)
-    pygame.draw.circle(layer, c, (90, 43), int(27 * scale))
-    pygame.draw.rect(layer, c, (63, 70, 54, 90), border_radius=12)
-    pygame.draw.polygon(layer, c, [(65, 88), (28, 130), (44, 143), (78, 112)])
-    pygame.draw.polygon(layer, c, [(111, 88), (145, 120), (134, 135), (102, 112)])
-    pygame.draw.polygon(layer, c, [(67, 155), (55, 235), (77, 235), (91, 165)])
-    pygame.draw.polygon(layer, c, [(94, 164), (105, 235), (127, 235), (113, 155)])
-    pygame.draw.polygon(layer, (180, 187, 172, alpha),
-                        [(72, 36), (85, 25), (103, 36), (101, 49), (77, 49)])
-    layer = pygame.transform.smoothscale(layer, (int(180*scale), int(260*scale)))
-    surface.blit(layer, (x, y))
+EXPRESSIONS = {
+    "curious": (0, 0),
+    "stern": (1, 0),
+    "surprised": (2, 0),
+    "happy": (0, 1),
+    "angry": (1, 1),
+    "thinking": (2, 1)
+}
 
-def draw_spirit(surface, x, y, expression="curious", scale=1.0):
-    """Tinh linh vẽ bằng hình cơ bản để file chạy được ngay cả khi chưa thêm sprite."""
-    w, h = int(190 * scale), int(225 * scale)
-    layer = pygame.Surface((w, h), pygame.SRCALPHA)
-    # Hai chiếc lá trên đầu
-    pygame.draw.ellipse(layer, (182, 222, 60), (int(w*.16), 2, int(w*.37), int(h*.27)))
-    pygame.draw.ellipse(layer, (137, 204, 53), (int(w*.48), 0, int(w*.34), int(h*.30)))
-    pygame.draw.line(layer, (71, 139, 46), (int(w*.34), int(h*.22)),
-                     (int(w*.18), int(h*.06)), max(1, int(2*scale)))
-    pygame.draw.line(layer, (71, 139, 46), (int(w*.56), int(h*.22)),
-                     (int(w*.73), int(h*.06)), max(1, int(2*scale)))
-    # Thân tròn, má và lá đuôi
-    pygame.draw.ellipse(layer, (119, 197, 94), (int(w*.08), int(h*.19), int(w*.84), int(h*.62)))
-    pygame.draw.ellipse(layer, (246, 239, 183), (int(w*.16), int(h*.39), int(w*.68), int(h*.39)))
-    pygame.draw.ellipse(layer, (255, 255, 221), (int(w*.38), int(h*.23), int(w*.25), int(h*.16)))
-    pygame.draw.ellipse(layer, (255, 179, 139), (int(w*.22), int(h*.54), int(w*.13), int(h*.08)))
-    pygame.draw.ellipse(layer, (255, 179, 139), (int(w*.65), int(h*.54), int(w*.13), int(h*.08)))
-    if expression in ("angry", "stern"):
-        pygame.draw.ellipse(layer, (166, 93, 14), (int(w*.27), int(h*.45), int(w*.16), int(h*.12)))
-        pygame.draw.ellipse(layer, (166, 93, 14), (int(w*.58), int(h*.45), int(w*.16), int(h*.12)))
-        pygame.draw.line(layer, (68, 68, 39), (int(w*.25), int(h*.44)),
-                         (int(w*.43), int(h*.41)), max(2, int(4*scale)))
-        pygame.draw.line(layer, (68, 68, 39), (int(w*.57), int(h*.41)),
-                         (int(w*.75), int(h*.44)), max(2, int(4*scale)))
-        pygame.draw.arc(layer, (104, 66, 41),
-                        (int(w*.43), int(h*.61), int(w*.15), int(h*.08)), math.pi, 2*math.pi, 2)
-    elif expression == "surprised":
-        pygame.draw.circle(layer, (255, 180, 25), (int(w*.35), int(h*.49)), int(10*scale))
-        pygame.draw.circle(layer, (255, 180, 25), (int(w*.66), int(h*.49)), int(10*scale))
-        pygame.draw.ellipse(layer, (190, 62, 62), (int(w*.47), int(h*.58), int(w*.09), int(h*.12)))
-    elif expression == "happy":
-        pygame.draw.arc(layer, (153, 94, 18), (int(w*.25), int(h*.43), int(w*.20), int(h*.14)), 0, math.pi, 3)
-        pygame.draw.arc(layer, (153, 94, 18), (int(w*.57), int(h*.43), int(w*.20), int(h*.14)), 0, math.pi, 3)
-        pygame.draw.arc(layer, (153, 94, 18), (int(w*.40), int(h*.57), int(w*.20), int(h*.12)), math.pi, 2*math.pi, 3)
-    else:
-        pygame.draw.ellipse(layer, (255, 174, 18), (int(w*.27), int(h*.44), int(w*.17), int(h*.16)))
-        pygame.draw.ellipse(layer, (255, 174, 18), (int(w*.57), int(h*.44), int(w*.17), int(h*.16)))
-        pygame.draw.circle(layer, WHITE, (int(w*.32), int(h*.47)), max(2, int(4*scale)))
-        pygame.draw.circle(layer, WHITE, (int(w*.62), int(h*.47)), max(2, int(4*scale)))
-        pygame.draw.circle(layer, (196, 88, 85), (int(w*.51), int(h*.58)), max(2, int(3*scale)))
-    # Cuống cong và chiếc lá cuối đuôi
-    pygame.draw.arc(layer, (65, 139, 49),
-                    (int(w*.36), int(h*.70), int(w*.35), int(h*.43)), 0.2, math.pi, max(4, int(7*scale)))
-    pygame.draw.ellipse(layer, (106, 183, 45), (int(w*.48), int(h*.84), int(w*.36), int(h*.15)))
-    surface.blit(layer, (x, y))
 
-class EchoRipple:
-    """Các vòng âm vang loang ra từ tâm màn hình; chữ cũng được nhân bóng mờ."""
-    def __init__(self):
-        self.elapsed = 0.0
-        self.duration = 4.8
-        self.active = True
+PAPER = (244, 235, 210)
+PAPER_LIGHT = (250, 244, 226)
+PAPER_BORDER = (111, 78, 43)
+PAPER_BORDER_LIGHT = (157, 119, 72)
 
-    def update(self, dt):
-        self.elapsed += dt
-        if self.elapsed >= self.duration:
-            self.active = False
+INK = (45, 35, 25)
+INK_LIGHT = (75, 55, 38)
 
-    def draw(self, surface, text):
-        if not self.active:
-            return
-        center = (WIDTH // 2, HEIGHT // 2 - 20)
-        for i in range(5):
-            phase = (self.elapsed * 210 + i * 115) % 620
-            radius = int(35 + phase)
-            alpha = max(0, int(145 * (1 - phase / 620)))
-            ring = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            pygame.draw.ellipse(ring, (207, 231, 188, alpha),
-                                (center[0] - radius, center[1] - radius * .48,
-                                 radius * 2, radius * .96), 2)
-            surface.blit(ring, (0, 0))
-        font = get_font(31, True)
-        base = font.render(text, True, (245, 247, 219))
-        rect = base.get_rect(center=center)
-        for offset in (28, 18, 9):
-            ghost = font.render(text, True, (167, 208, 169))
-            ghost.set_alpha(max(0, 65 - int(offset * 1.5)))
-            surface.blit(ghost, rect.move(0, offset))
-        surface.blit(base, rect)
 
-class WoodPuzzle:
-    """Puzzle 3x2: kéo 6 mảnh tranh vào đúng ô khung gỗ."""
-    COLS, ROWS = 3, 2
-    TILE_W, TILE_H = 190, 145
+def cover(image, size):
+    iw, ih = image.get_size()
 
-    def __init__(self, image):
-        self.image = pygame.transform.smoothscale(
-            image, (self.COLS * self.TILE_W, self.ROWS * self.TILE_H)
+    scale = max(
+        size[0] / iw,
+        size[1] / ih
+    )
+
+    image = pygame.transform.smoothscale(
+        image,
+        (
+            int(iw * scale),
+            int(ih * scale)
         )
-        self.frame = pygame.Rect(180, 170, self.COLS*self.TILE_W, self.ROWS*self.TILE_H)
-        self.tiles = []
-        self.dragging = None
-        self.offset = (0, 0)
-        self.completed = False
-        self._make_tiles()
+    )
 
-    def _make_tiles(self):
-        self.tiles.clear()
-        positions = [(40, 180), (80, 390), (430, 470), (850, 160), (900, 420), (560, 470)]
-        order = list(range(self.COLS * self.ROWS))
-        random.shuffle(order)
-        for index in range(self.COLS * self.ROWS):
-            col, row = index % self.COLS, index // self.COLS
-            source = pygame.Rect(col*self.TILE_W, row*self.TILE_H, self.TILE_W, self.TILE_H)
-            tile_image = self.image.subsurface(source).copy()
-            self.tiles.append({
-                "index": index, "image": tile_image,
-                "rect": pygame.Rect(positions[index], (self.TILE_W, self.TILE_H)),
-                "placed": False, "correct": False
-            })
-        # Mỗi mảnh bắt đầu ở một vị trí rời rạc, không theo thứ tự khung.
-        random.shuffle(self.tiles)
-        for tile, pos in zip(self.tiles, positions):
-            tile["rect"].topleft = pos
-            tile["placed"] = False
-            tile["correct"] = False
+    x = (
+        image.get_width()
+        - size[0]
+    ) // 2
 
-    def handle_event(self, event):
-        if self.completed:
-            return
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
-            self._make_tiles()
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            for tile in reversed(self.tiles):
-                if tile["rect"].collidepoint(event.pos):
-                    self.dragging = tile
-                    self.offset = (event.pos[0] - tile["rect"].x,
-                                   event.pos[1] - tile["rect"].y)
-                    self.tiles.remove(tile)
-                    self.tiles.append(tile)
-                    break
-        elif event.type == pygame.MOUSEMOTION and self.dragging:
-            self.dragging["rect"].x = event.pos[0] - self.offset[0]
-            self.dragging["rect"].y = event.pos[1] - self.offset[1]
-        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.dragging:
-            tile = self.dragging
-            self.dragging = None
-            idx = tile["index"]
-            col, row = idx % self.COLS, idx // self.COLS
-            target = pygame.Rect(self.frame.x + col*self.TILE_W,
-                                 self.frame.y + row*self.TILE_H,
-                                 self.TILE_W, self.TILE_H)
-            if target.inflate(45, 45).collidepoint(tile["rect"].center):
-                tile["rect"] = target
-                tile["placed"] = True
-                tile["correct"] = True
-            else:
-                tile["placed"] = False
-                tile["correct"] = False
-            self.completed = all(t["correct"] for t in self.tiles)
+    y = (
+        image.get_height()
+        - size[1]
+    ) // 2
 
-    def draw(self, surface):
-        # Lớp nền bảng gỗ.
-        board = pygame.Rect(160, 150, self.frame.width + 40, self.frame.height + 40)
-        pygame.draw.rect(surface, (72, 48, 31), board, border_radius=12)
-        pygame.draw.rect(surface, (184, 132, 75), board, 7, border_radius=12)
-        for row in range(self.ROWS):
-            for col in range(self.COLS):
-                cell = pygame.Rect(self.frame.x + col*self.TILE_W,
-                                   self.frame.y + row*self.TILE_H,
-                                   self.TILE_W, self.TILE_H)
-                pygame.draw.rect(surface, (51, 59, 38), cell)
-                pygame.draw.rect(surface, (207, 168, 111), cell, 3)
-        for tile in self.tiles:
-            surface.blit(tile["image"], tile["rect"])
-            pygame.draw.rect(surface, (228, 196, 132), tile["rect"], 4)
-            pygame.draw.line(surface, (95, 60, 35),
-                             tile["rect"].topleft,
-                             (tile["rect"].right, tile["rect"].top), 2)
-        draw_text(surface, "GHÉP TRANH NGÔI NHÀ", TITLE_FONT, GOLD, (WIDTH//2, 48), True)
-        draw_text(surface, "Kéo từng miếng gỗ vào ô tương ứng trong khung. Nhấn R để xáo lại.",
-                  SMALL, WHITE, (WIDTH//2, 94), True)
-        draw_text(surface, f"Đã ghép: {sum(1 for t in self.tiles if t['correct'])}/6",
-                  SMALL, WHITE, (WIDTH//2, 126), True)
+    return image.subsurface(
+        (
+            x,
+            y,
+            size[0],
+            size[1]
+        )
+    ).copy()
 
-class StoryGame:
-    def __init__(self):
+
+def load_knight(size):
+    paths = []
+
+    for ext in (
+        "*.png",
+        "*.webp",
+        "*.jpg",
+        "*.jpeg"
+    ):
+        paths.extend(
+            glob.glob(
+                os.path.join(
+                    KNIGHT_DIR,
+                    ext
+                )
+            )
+        )
+
+    paths.sort(
+        key=lambda p: (
+            0
+            if any(
+                key in os.path.basename(p).lower()
+                for key in (
+                    "idle",
+                    "front",
+                    "dialog",
+                    "talk",
+                    "stand",
+                    "knight"
+                )
+            )
+            else 1,
+            p
+        )
+    )
+
+    for path in paths:
+        try:
+            image = pygame.image.load(
+                path
+            ).convert_alpha()
+
+            # Cắt phần trong suốt xung quanh nhân vật
+            rect = image.get_bounding_rect()
+
+            if rect.width > 0 and rect.height > 0:
+                image = image.subsurface(
+                    rect
+                ).copy()
+
+            iw, ih = image.get_size()
+
+            if iw <= 0 or ih <= 0:
+                continue
+
+            # Giữ nguyên tỉ lệ
+            scale = min(
+                size[0] / iw,
+                size[1] / ih
+            )
+
+            new_size = (
+                max(
+                    1,
+                    int(iw * scale)
+                ),
+                max(
+                    1,
+                    int(ih * scale)
+                )
+            )
+
+            return pygame.transform.smoothscale(
+                image,
+                new_size
+            )
+
+        except pygame.error:
+            continue
+
+    return None
+
+
+def load_spirit_frames():
+    result = {}
+
+    if not os.path.isfile(
+        SPIRIT_SHEET
+    ):
+        return result
+
+    try:
+        sheet = pygame.image.load(
+            SPIRIT_SHEET
+        ).convert_alpha()
+    except pygame.error:
+        return result
+
+    cw = sheet.get_width() // 3
+    ch = sheet.get_height() // 2
+
+    for name, (col, row) in EXPRESSIONS.items():
+        frame = sheet.subsurface(
+            (
+                col * cw,
+                row * ch,
+                cw,
+                ch
+            )
+        ).copy()
+
+        rect = frame.get_bounding_rect()
+
+        if rect.width > 0 and rect.height > 0:
+            frame = frame.subsurface(
+                rect
+            ).copy()
+
+        result[name] = frame
+
+    return result
+
+
+class ForestScene(Scene):
+
+    def __init__(self, game):
+        super().__init__(game)
+
+        self.screen_size = (
+            game.screen.get_size()
+        )
+
+        self.w, self.h = (
+            self.screen_size
+        )
+
+        # Font
+        self.font = pygame.font.SysFont(
+            "arial",
+            20
+        )
+
+        self.small = pygame.font.SysFont(
+            "arial",
+            14
+        )
+
+        self.heading = pygame.font.SysFont(
+            "arial",
+            30,
+            bold=True
+        )
+
+        self.name_font = pygame.font.SysFont(
+            "arial",
+            19,
+            bold=True
+        )
+
+        # Font riêng cho tiếng vọng
+        self.echo_font = pygame.font.SysFont(
+            "georgia",
+            31,
+            bold=True
+        )
+
+        # Background
+        self.forest = self._background(
+            FOREST
+        )
+
+        self.house_bg = self._background(
+            HOUSE
+        )
+
+        # Nhân vật
+        self.knight = load_knight(
+            (135, 190)
+        )
+
+        self.knight_dialog = load_knight(
+            (175, 245)
+        )
+
+        self.spirits = load_spirit_frames()
+
+        # Game state
+        self.game_state = game.game_state
+
+        # Scene state
         self.scene = "approach"
+
         self.timer = 0.0
-        self.house_alpha = 0
-        self.house_direction = 1
+        self.echo_time = 0.0
+
+        self.knight_x = -170
+
         self.dialog_index = 0
         self.char_progress = 0.0
-        self.ripple = EchoRipple()
-        self.spirit_expression = "curious"
-        self.spirit_image = None
-        self.puzzle = WoodPuzzle(HOUSE_BG)
-        self.dialogs = [
-            ("Tinh linh", "Ồ... cuối cùng cũng có kẻ tìm được lối vào khu rừng này.", "curious"),
-            ("Hiệp sĩ", "Ngươi là ai? Ta vừa thấy một ngôi nhà ở đây, nhưng nó đã biến mất.", "surprised"),
-            ("Tinh linh", "Ngôi nhà không biến mất. Ngươi chỉ chưa chứng minh được rằng mình nhìn thấy điều cần nhìn.", "stern"),
-            ("Tinh linh", "Ngươi đã ghép lại ký ức của khu rừng. Ta công nhận trí tuệ của ngươi.", "happy"),
-            ("Hiệp sĩ", "Vậy hãy nói cho ta biết: làm thế nào để đạt được điều ta mong muốn?", "curious"),
-            ("Tinh linh", "Hãy nói điều ngươi tìm kiếm, hiệp sĩ. Nếu điều đó nằm trong quyền năng của ta, ta sẽ giúp.", "happy"),
+
+        self.puzzle = None
+        self.puzzle_done_time = 0.0
+
+        self.finished = False
+
+        # Hội thoại trước câu đố
+        self.intro_dialogs = [
+            (
+                "Hiệp sĩ",
+                "Một ngôi nhà giữa khu rừng...? "
+                "Ta phải tiến lại gần xem sao."
+            ),
+            (
+                "Hiệp sĩ",
+                "Kỳ lạ... vừa rồi nó còn ở đây. "
+                "Tại sao lại biến mất?"
+            ),
+            (
+                "???",
+                "Kẻ xâm nhập... "
+                "ngươi đến nơi này để tìm kiếm điều gì?"
+            ),
+            (
+                "Hiệp sĩ",
+                "Ai đó? Hãy hiện thân! "
+                "Ta không đến đây để gây chiến."
+            ),
+            (
+                "???",
+                "Muốn được khu rừng công nhận, "
+                "đôi mắt của ngươi là chưa đủ."
+            ),
+            (
+                "???",
+                "Nếu thật sự có trí tuệ, "
+                "hãy khôi phục lại thứ mà khu rừng đã che giấu."
+            )
         ]
 
-    def handle_event(self, event):
-        if self.scene == "puzzle":
-            self.puzzle.handle_event(event)
-            if self.puzzle.completed:
-                self.scene = "spirit_reveal"
-                self.timer = 0
-            return
-        if event.type not in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN):
-            return
-        advance = (
-            event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
-        ) or (
-            event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_SPACE)
+        # Hội thoại sau khi giải câu đố
+        self.dialogs = [
+            (
+                "Tinh linh",
+                "Ngươi đã khôi phục được bức tranh "
+                "mà khu rừng che giấu. Ta công nhận trí tuệ của ngươi.",
+                "happy"
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta đang tìm đường đến hang rồng. "
+                "Ngươi có biết con đường nào dẫn đến đó không?",
+                "thinking"
+            ),
+            (
+                "Tinh linh",
+                "Có. Nhưng muốn đến hang rồng, "
+                "ngươi phải vượt qua Đầm Lầy Độc ở phía trước.",
+                "stern"
+            ),
+            (
+                "Hiệp sĩ",
+                "Đầm Lầy Độc? Vậy khí độc trong đó "
+                "chính là thứ đang bao phủ khu rừng này sao?",
+                "curious"
+            ),
+            (
+                "Tinh linh",
+                "Đúng vậy. Khí độc đang dần lan ra "
+                "và ăn mòn mọi sinh vật trên đường đi của nó.",
+                "stern"
+            ),
+            (
+                "Tinh linh",
+                "Ngươi đã chứng minh được trí tuệ của mình. "
+                "Ta sẽ ban cho ngươi một lời chúc phúc.",
+                "happy"
+            ),
+            (
+                "Tinh linh",
+                "Lời chúc này sẽ bảo vệ ngươi khỏi khí độc "
+                "khi vượt qua khu rừng và tiến vào đầm lầy.",
+                "happy"
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta hiểu rồi. Cảm ơn ngươi. "
+                "Ta sẽ tiếp tục đến Đầm Lầy Độc "
+                "để tìm đường tới hang rồng.",
+                "happy"
+            ),
+            (
+                "Tinh linh",
+                "Khoan đã... trước khi đi, "
+                "hãy nhớ lấy một điều.",
+                "thinking"
+            ),
+            (
+                "Tinh linh",
+                "Trên hành trình phía trước, "
+                "có những thứ mắt thấy chưa chắc đã là thật.",
+                "stern"
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta sẽ ghi nhớ lời cảnh báo đó. "
+                "Tạm biệt, tinh linh của khu rừng.",
+                "thinking"
+            ),
+            (
+                "Tinh linh",
+                "Tạm biệt, hiệp sĩ. "
+                "Chúc ngươi bình an trên con đường phía trước.",
+                "happy"
+            )
+        ]
+
+    def _background(self, path):
+        if os.path.isfile(path):
+            return cover(
+                pygame.image.load(
+                    path
+                ).convert(),
+                self.screen_size
+            )
+
+        surface = pygame.Surface(
+            self.screen_size
         )
-        if not advance:
+
+        surface.fill(
+            (35, 75, 45)
+        )
+
+        return surface
+
+    def _text(
+        self,
+        screen,
+        text,
+        font,
+        color,
+        center
+    ):
+        image = font.render(
+            text,
+            True,
+            color
+        )
+
+        screen.blit(
+            image,
+            image.get_rect(
+                center=center
+            )
+        )
+
+    def _wrap(
+        self,
+        text,
+        font,
+        width
+    ):
+        lines = []
+        current = ""
+
+        for word in text.split():
+            test = (
+                word
+                if not current
+                else current + " " + word
+            )
+
+            if font.size(test)[0] <= width:
+                current = test
+            else:
+                if current:
+                    lines.append(
+                        current
+                    )
+
+                current = word
+
+        if current:
+            lines.append(
+                current
+            )
+
+        return lines
+
+    def _dialog(
+        self,
+        screen,
+        name,
+        text
+    ):
+        pw = self.w - 100
+        ph = 155
+
+        x = 50
+        y = self.h - ph - 25
+
+        # Giấy cổ
+        panel = pygame.Surface(
+            (pw, ph),
+            pygame.SRCALPHA
+        )
+
+        panel.fill(
+            (*PAPER, 248)
+        )
+
+        # Viền ngoài
+        pygame.draw.rect(
+            panel,
+            PAPER_BORDER,
+            panel.get_rect(),
+            3,
+            border_radius=5
+        )
+
+        # Viền trong
+        pygame.draw.rect(
+            panel,
+            PAPER_BORDER_LIGHT,
+            (
+                8,
+                8,
+                pw - 16,
+                ph - 16
+            ),
+            1,
+            border_radius=3
+        )
+
+        # Thanh tên
+        pygame.draw.rect(
+            panel,
+            (225, 210, 181),
+            (
+                16,
+                13,
+                pw - 32,
+                34
+            ),
+            border_radius=4
+        )
+
+        pygame.draw.line(
+            panel,
+            PAPER_BORDER_LIGHT,
+            (18, 48),
+            (pw - 18, 48),
+            1
+        )
+
+        name_image = self.name_font.render(
+            name,
+            True,
+            INK
+        )
+
+        panel.blit(
+            name_image,
+            (28, 19)
+        )
+
+        lines = self._wrap(
+            text,
+            self.font,
+            pw - 55
+        )
+
+        for i, line in enumerate(
+            lines[:3]
+        ):
+            image = self.font.render(
+                line,
+                True,
+                INK
+            )
+
+            panel.blit(
+                image,
+                (
+                    28,
+                    58 + i * 27
+                )
+            )
+
+        screen.blit(
+            panel,
+            (x, y)
+        )
+
+        self._text(
+            screen,
+            "ENTER / SPACE / click để tiếp tục",
+            self.small,
+            INK_LIGHT,
+            (
+                self.w - 180,
+                self.h - 12
+            )
+        )
+
+    def _knight(
+        self,
+        screen,
+        x,
+        y,
+        size=None
+    ):
+        image = self.knight
+
+        if size is not None and image is not None:
+            iw, ih = image.get_size()
+
+            scale = min(
+                size[0] / iw,
+                size[1] / ih
+            )
+
+            new_size = (
+                max(
+                    1,
+                    int(iw * scale)
+                ),
+                max(
+                    1,
+                    int(ih * scale)
+                )
+            )
+
+            image = pygame.transform.smoothscale(
+                image,
+                new_size
+            )
+
+        if image is not None:
+            screen.blit(
+                image,
+                (
+                    int(x),
+                    int(y)
+                )
+            )
+
+        else:
+            pygame.draw.circle(
+                screen,
+                (90, 105, 112),
+                (
+                    int(x + 60),
+                    int(y + 35)
+                ),
+                27
+            )
+
+            pygame.draw.rect(
+                screen,
+                (65, 75, 85),
+                (
+                    int(x + 30),
+                    int(y + 60),
+                    60,
+                    95
+                ),
+                border_radius=10
+            )
+
+    def _draw_dialog_knight(
+        self,
+        screen,
+        side="left"
+    ):
+        if self.knight_dialog is None:
             return
+
+        image = self.knight_dialog
+
+        if side == "left":
+            rect = image.get_rect(
+                midbottom=(
+                    170,
+                    self.h - 175
+                )
+            )
+
+        else:
+            rect = image.get_rect(
+                midbottom=(
+                    self.w - 155,
+                    self.h - 175
+                )
+            )
+
+        screen.blit(
+            image,
+            rect
+        )
+
+    def _spirit(
+        self,
+        screen,
+        expression,
+        center,
+        size=(235, 270)
+    ):
+        image = (
+            self.spirits.get(
+                expression
+            )
+            or self.spirits.get(
+                "curious"
+            )
+        )
+
+        if image is None:
+            pygame.draw.circle(
+                screen,
+                (174, 220, 116),
+                center,
+                55
+            )
+
+            return
+
+        image = pygame.transform.smoothscale(
+            image,
+            size
+        )
+
+        screen.blit(
+            image,
+            image.get_rect(
+                center=center
+            )
+        )
+
+    def _mist(self, screen):
+        layer = pygame.Surface(
+            self.screen_size,
+            pygame.SRCALPHA
+        )
+
+        for i in range(8):
+            x = int(
+                (
+                    self.timer
+                    * (20 + i * 4)
+                    + i * 160
+                )
+                % (self.w + 280)
+            ) - 140
+
+            pygame.draw.ellipse(
+                layer,
+                (
+                    235,
+                    246,
+                    224,
+                    22
+                ),
+                (
+                    x,
+                    80 + i * 60,
+                    250,
+                    48
+                )
+            )
+
+        screen.blit(
+            layer,
+            (0, 0)
+        )
+
+    def _draw_echo(self, screen):
+        shade = pygame.Surface(
+            self.screen_size,
+            pygame.SRCALPHA
+        )
+
+        shade.fill(
+            (
+                5,
+                16,
+                12,
+                150
+            )
+        )
+
+        screen.blit(
+            shade,
+            (0, 0)
+        )
+
+        center = (
+            self.w // 2,
+            self.h // 2 - 50
+        )
+
+        # Sóng nước lan ra
+        wave_layer = pygame.Surface(
+            self.screen_size,
+            pygame.SRCALPHA
+        )
+
+        for i in range(7):
+            phase = (
+                self.echo_time * 190
+                - i * 85
+            ) % 600
+
+            progress = phase / 600
+
+            rx = int(
+                35 + progress * 500
+            )
+
+            ry = int(
+                12 + progress * 150
+            )
+
+            alpha = int(
+                150 * (
+                    1 - progress
+                )
+            )
+
+            width = max(
+                1,
+                int(
+                    4 * (
+                        1 - progress
+                    )
+                )
+            )
+
+            pygame.draw.ellipse(
+                wave_layer,
+                (
+                    205,
+                    238,
+                    210,
+                    alpha
+                ),
+                (
+                    center[0] - rx,
+                    center[1] - ry,
+                    rx * 2,
+                    ry * 2
+                ),
+                width
+            )
+
+        screen.blit(
+            wave_layer,
+            (0, 0)
+        )
+
+        # Chữ vọng tan dần
+        message = (
+            "KẺ XÂM NHẬP TỪ ĐÂU ĐẾN?"
+        )
+
+        for i in range(4, 0, -1):
+            delay = i * 0.16
+
+            progress = (
+                self.echo_time - delay
+            ) % 2.0
+
+            progress /= 2.0
+
+            scale = (
+                1.0
+                + progress * 0.18
+            )
+
+            alpha = max(
+                0,
+                int(
+                    100
+                    * (
+                        1 - progress
+                    )
+                )
+            )
+
+            base = self.echo_font.render(
+                message,
+                True,
+                (
+                    205,
+                    235,
+                    210
+                )
+            )
+
+            echo = pygame.transform.smoothscale(
+                base,
+                (
+                    int(
+                        base.get_width()
+                        * scale
+                    ),
+                    int(
+                        base.get_height()
+                        * scale
+                    )
+                )
+            )
+
+            echo.set_alpha(
+                alpha
+            )
+
+            screen.blit(
+                echo,
+                echo.get_rect(
+                    center=(
+                        center[0],
+                        center[1] + i * 5
+                    )
+                )
+            )
+
+        main_text = self.echo_font.render(
+            message,
+            True,
+            (
+                240,
+                248,
+                232
+            )
+        )
+
+        pulse = (
+            math.sin(
+                self.echo_time * 3
+            ) + 1
+        ) / 2
+
+        main_text.set_alpha(
+            int(
+                190 + pulse * 65
+            )
+        )
+
+        screen.blit(
+            main_text,
+            main_text.get_rect(
+                center=center
+            )
+        )
+
+        if self.echo_time > 0.8:
+            self._text(
+                screen,
+                "Một giọng nói vang lên từ khắp khu rừng...",
+                self.font,
+                WHITE,
+                (
+                    self.w // 2,
+                    self.h - 110
+                )
+            )
+
+        self._text(
+            screen,
+            "ENTER / SPACE / click để tiếp tục",
+            self.small,
+            GOLD,
+            (
+                self.w // 2,
+                self.h - 35
+            )
+        )
+
+    def draw_game_state(
+        self,
+        screen
+    ):
+        hp = getattr(
+            self.game_state,
+            "hp",
+            100
+        )
+
+        max_hp = getattr(
+            self.game_state,
+            "max_hp",
+            100
+        )
+
+        blessing = getattr(
+            self.game_state,
+            "forest_blessing",
+            False
+        )
+
+        panel_w = 270
+        panel_h = 82
+
+        panel = pygame.Surface(
+            (
+                panel_w,
+                panel_h
+            ),
+            pygame.SRCALPHA
+        )
+
+        panel.fill(
+            (
+                20,
+                20,
+                20,
+                185
+            )
+        )
+
+        pygame.draw.rect(
+            panel,
+            PAPER_BORDER_LIGHT,
+            panel.get_rect(),
+            2,
+            border_radius=8
+        )
+
+        title_font = pygame.font.SysFont(
+            "arial",
+            17,
+            bold=True
+        )
+
+        text_font = pygame.font.SysFont(
+            "arial",
+            15
+        )
+
+        title = title_font.render(
+            "HIỆP SĨ",
+            True,
+            (
+                245,
+                225,
+                180
+            )
+        )
+
+        panel.blit(
+            title,
+            (12, 8)
+        )
+
+        hp_text = text_font.render(
+            f"HP  {hp}/{max_hp}",
+            True,
+            WHITE
+        )
+
+        panel.blit(
+            hp_text,
+            (12, 31)
+        )
+
+        bar_x = 82
+        bar_y = 34
+        bar_w = 170
+        bar_h = 12
+
+        pygame.draw.rect(
+            panel,
+            (
+                65,
+                65,
+                65
+            ),
+            (
+                bar_x,
+                bar_y,
+                bar_w,
+                bar_h
+            ),
+            border_radius=5
+        )
+
+        hp_ratio = 0
+
+        if max_hp > 0:
+            hp_ratio = max(
+                0,
+                min(
+                    1,
+                    hp / max_hp
+                )
+            )
+
+        pygame.draw.rect(
+            panel,
+            (
+                75,
+                165,
+                85
+            ),
+            (
+                bar_x,
+                bar_y,
+                int(
+                    bar_w * hp_ratio
+                ),
+                bar_h
+            ),
+            border_radius=5
+        )
+
+        if blessing:
+            status = text_font.render(
+                "Trạng thái: Kháng khí độc",
+                True,
+                GOLD
+            )
+        else:
+            status = text_font.render(
+                "Trạng thái: Bình thường",
+                True,
+                WHITE
+            )
+
+        panel.blit(
+            status,
+            (12, 57)
+        )
+
+        screen.blit(
+            panel,
+            (15, 15)
+        )
+
+    def _next(self):
         if self.scene == "approach":
-            self.scene = "echo"
-            self.timer = 0
-            self.ripple = EchoRipple()
+            # Bắt đầu hội thoại,
+            # chưa được vào câu đố
+            self.scene = "intro_dialog"
+            self.dialog_index = 0
+            self.char_progress = 0
+
+        elif self.scene == "intro_dialog":
+            line = self.intro_dialogs[
+                self.dialog_index
+            ][1]
+
+            # Nếu chữ đang chạy,
+            # bấm lần đầu chỉ hiện hết câu
+            if (
+                self.char_progress
+                < len(line)
+            ):
+                self.char_progress = len(line)
+                return
+
+            self.dialog_index += 1
+            self.char_progress = 0
+
+            # Sau 2 câu đầu mới có tiếng vọng
+            if self.dialog_index == 2:
+                self.scene = "echo"
+                self.echo_time = 0.0
+
+            elif (
+                self.dialog_index
+                >= len(
+                    self.intro_dialogs
+                )
+            ):
+                self.scene = "puzzle_intro"
+
         elif self.scene == "echo":
-            self.scene = "puzzle_intro"
+            # Quay lại hội thoại
+            # sau khi hiệu ứng tiếng vọng kết thúc
+            self.scene = "intro_dialog"
+            self.dialog_index = 2
+            self.char_progress = 0
+
         elif self.scene == "puzzle_intro":
+            self.puzzle = TangramGame(
+                self.game.screen,
+                HOUSE,
+                self.w,
+                self.h
+            )
+
+            self.puzzle_done_time = 0.0
             self.scene = "puzzle"
+
         elif self.scene == "spirit_reveal":
             self.scene = "dialog"
             self.dialog_index = 0
             self.char_progress = 0
+
         elif self.scene == "dialog":
-            full_text = self.dialogs[self.dialog_index][1]
-            if self.char_progress < len(full_text):
-                self.char_progress = len(full_text)
-            else:
-                self.dialog_index += 1
-                if self.dialog_index >= len(self.dialogs):
-                    self.scene = "ending"
-                else:
-                    self.char_progress = 0
-                    self.spirit_expression = self.dialogs[self.dialog_index][2]
-        elif self.scene == "ending":
-            self.scene = "approach"
-            self.timer = 0
-            self.dialog_index = 0
+            line = self.dialogs[
+                self.dialog_index
+            ][1]
+
+            if (
+                self.char_progress
+                < len(line)
+            ):
+                self.char_progress = len(line)
+                return
+
+            self.dialog_index += 1
             self.char_progress = 0
-            self.puzzle = WoodPuzzle(HOUSE_BG)
 
-    def update(self, dt):
-        self.timer += dt
-        if self.scene == "approach":
-            # Ngôi nhà hiện lên qua sương, rồi mờ dần khi hiệp sĩ đến gần.
-            self.house_alpha = int(150 + 105 * (0.5 + 0.5 * math.sin(self.timer * 2.3)))
-            self.house_direction = 1
-        elif self.scene == "echo":
-            self.ripple.update(dt)
-        elif self.scene == "spirit_reveal":
-            self.spirit_expression = "surprised" if self.timer < 1.1 else "curious"
-        elif self.scene == "dialog":
-            text = self.dialogs[self.dialog_index][1]
-            self.char_progress = min(len(text), self.char_progress + dt * 42)
+            if (
+                self.dialog_index
+                >= len(self.dialogs)
+            ):
+                self.game_state.forest_blessing = True
+                self.scene = "ending"
 
-    def draw(self):
-        if self.scene == "approach":
-            screen.blit(FOREST_BG, (0, 0))
-            # Chồng ảnh ngôi nhà với alpha dao động để tạo cảm giác thấp thoáng.
-            ghost = HOUSE_BG.copy()
-            ghost.set_alpha(self.house_alpha)
-            screen.blit(ghost, (0, 0))
-            # Sương trôi ngang.
-            mist = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            for i in range(8):
-                x = int((self.timer * (24 + i*4) + i*190) % (WIDTH + 240)) - 120
-                y = 140 + i*65
-                pygame.draw.ellipse(mist, (235, 243, 218, 24),
-                                    (x, y, 260, 55))
-            screen.blit(mist, (0, 0))
-            draw_knight_silhouette(screen, 145, 370, 1.0, 220)
-            draw_text(screen, "RỪNG TINH LINH", TITLE_FONT, GOLD, (WIDTH//2, 42), True)
-            draw_dialog(screen, "Hiệp sĩ", "Một ngôi nhà...? Mình chưa từng thấy nó trên bản đồ.", len(
-                "Một ngôi nhà...? Mình chưa từng thấy nó trên bản đồ."
-            ) if self.timer > 2 else int(self.timer * 26))
-        elif self.scene == "echo":
-            screen.blit(FOREST_BG, (0, 0))
-            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            overlay.fill((8, 20, 15, 110))
-            screen.blit(overlay, (0, 0))
-            self.ripple.draw(screen, "KẺ XÂM NHẬP TỪ ĐÂU ĐẾN?")
-            if self.ripple.elapsed > 0.5:
-                draw_text(screen, "Nếu ngươi có bản lĩnh, hãy chứng minh trí tuệ của ngươi...",
-                          FONT, WHITE, (WIDTH//2, HEIGHT-155), True)
-            if self.ripple.elapsed > 2.1:
-                draw_text(screen, "Khiến cho ta công nhận, và ta sẽ thực hiện yêu cầu của ngươi...",
-                          SMALL, CREAM, (WIDTH//2, HEIGHT-120), True)
-            draw_text(screen, "Tiếng vọng lan qua khu rừng...", SMALL, GOLD,
-                      (WIDTH//2, 45), True)
-            draw_text(screen, "ENTER / SPACE / click để tìm hiểu", SMALL, WHITE,
-                      (WIDTH//2, HEIGHT-45), True)
-        elif self.scene == "puzzle_intro":
-            screen.blit(FOREST_BG, (0, 0))
-            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            overlay.fill((12, 25, 16, 125))
-            screen.blit(overlay, (0, 0))
-            draw_text(screen, "KÝ ỨC BỊ ĐÁNH RƠI", TITLE_FONT, GOLD,
-                      (WIDTH//2, 70), True)
-            draw_text(screen, "Trên nền đất là bức tranh khu rừng, những miếng gỗ vương vãi",
-                      FONT, WHITE, (WIDTH//2, 285), True)
-            draw_text(screen, "và một khung gỗ trống. Hãy xếp lại bức tranh ngôi nhà.",
-                      FONT, WHITE, (WIDTH//2, 330), True)
-            draw_text(screen, "ENTER / SPACE / click để bắt đầu", SMALL, WHITE,
-                      (WIDTH//2, HEIGHT-70), True)
-        elif self.scene == "puzzle":
-            screen.blit(FOREST_BG, (0, 0))
-            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            overlay.fill((7, 20, 13, 145))
-            screen.blit(overlay, (0, 0))
-            self.puzzle.draw(screen)
-        elif self.scene == "spirit_reveal":
-            screen.blit(FOREST_BG, (0, 0))
-            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            overlay.fill((28, 54, 30, 100))
-            screen.blit(overlay, (0, 0))
-            # Hào quang xuất hiện thành nhiều vòng sáng.
-            for i in range(5):
-                radius = int(55 + ((self.timer * 100 + i*70) % 190))
-                glow = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-                alpha = max(0, 110 - radius//2)
-                pygame.draw.circle(glow, (218, 245, 137, alpha),
-                                   (WIDTH//2, 320), radius, 3)
-                screen.blit(glow, (0, 0))
-            draw_spirit(screen, WIDTH//2-95, 165, self.spirit_expression, 1.0)
-            draw_text(screen, "Một tinh linh lá cây hiện ra giữa ánh sáng!", TITLE_FONT,
-                      GOLD, (WIDTH//2, 65), True)
-            draw_text(screen, "ENTER / SPACE / click để đối thoại", SMALL, WHITE,
-                      (WIDTH//2, HEIGHT-65), True)
-        elif self.scene == "dialog":
-            screen.blit(FOREST_BG, (0, 0))
-            # Làm nền dịu đi để nhân vật và khung thoại nổi bật.
-            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            overlay.fill((10, 25, 14, 85))
-            screen.blit(overlay, (0, 0))
-            speaker, text, expression = self.dialogs[self.dialog_index]
-            draw_spirit(screen, 110, 135, expression, 1.15)
-            draw_knight_silhouette(screen, 850, 310, .72, 230)
-            shown = text[:int(self.char_progress)]
-            draw_dialog(screen, speaker, shown)
-            if self.char_progress >= len(text):
-                draw_text(screen, "▼", SMALL, GOLD, (WIDTH-83, HEIGHT-43), True)
         elif self.scene == "ending":
-            screen.blit(FOREST_BG, (0, 0))
-            draw_spirit(screen, WIDTH//2-95, 135, "happy", 1.0)
-            draw_dialog(screen, "Tinh linh", "Cuộc gặp gỡ mới chỉ bắt đầu. Hãy tiếp tục hành trình của ngươi.")
-            draw_text(screen, "ENTER để xem lại phân cảnh", SMALL, WHITE,
-                      (WIDTH//2, HEIGHT-18), True)
+            self.finished = True
 
-def main():
-    game = StoryGame()
-    running = True
-    while running:
-        dt = min(clock.tick(FPS) / 1000.0, 0.05)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                running = False
-            else:
-                game.handle_event(event)
-        game.update(dt)
-        game.draw()
-        pygame.display.flip()
-    pygame.quit()
-    sys.exit()
+    def handle_event(
+        self,
+        event
+    ):
+        if self.scene == "puzzle":
+            if self.puzzle:
+                self.puzzle.handle_event(
+                    event
+                )
 
-if __name__ == "__main__":
-    main()
+            return
+
+        if (
+            (
+                event.type == pygame.KEYDOWN
+                and event.key in (
+                    pygame.K_RETURN,
+                    pygame.K_SPACE
+                )
+            )
+            or
+            (
+                event.type
+                == pygame.MOUSEBUTTONDOWN
+                and event.button == 1
+            )
+        ):
+            self._next()
+
+    def update(
+        self,
+        dt
+    ):
+        self.timer += dt
+
+        if self.scene == "approach":
+            self.knight_x = min(
+                120,
+                self.knight_x
+                + 90 * dt
+            )
+
+        elif self.scene == "echo":
+            self.echo_time += dt
+
+        elif self.scene == "intro_dialog":
+            line = self.intro_dialogs[
+                self.dialog_index
+            ][1]
+
+            self.char_progress = min(
+                len(line),
+                self.char_progress
+                + dt * 35
+            )
+
+        elif (
+            self.scene == "puzzle"
+            and self.puzzle
+        ):
+            self.puzzle.update()
+
+            if self.puzzle.completed:
+                self.puzzle_done_time += dt
+
+                if (
+                    self.puzzle_done_time
+                    > 1.6
+                ):
+                    self.scene = (
+                        "spirit_reveal"
+                    )
+
+                    self.timer = 0.0
+
+        elif self.scene == "dialog":
+            line = self.dialogs[
+                self.dialog_index
+            ][1]
+
+            self.char_progress = min(
+                len(line),
+                self.char_progress
+                + dt * 35
+            )
+
+    def draw(
+        self,
+        screen
+    ):
+        # Puzzle tự vẽ toàn màn hình
+        if (
+            self.scene == "puzzle"
+            and self.puzzle
+        ):
+            self.puzzle.draw()
+            self.draw_game_state(
+                screen
+            )
+            return
+
+        screen.blit(
+            self.forest,
+            (0, 0)
+        )
+
+        # -------------------------
+        # ĐI VÀO RỪNG
+        # -------------------------
+        if self.scene == "approach":
+            ghost = self.house_bg.copy()
+
+            ghost.set_alpha(
+                int(
+                    25
+                    + 150 * (
+                        0.5
+                        + 0.5 * math.sin(
+                            self.timer * 2
+                        )
+                    )
+                )
+            )
+
+            screen.blit(
+                ghost,
+                (0, 0)
+            )
+
+            self._mist(
+                screen
+            )
+
+            self._knight(
+                screen,
+                self.knight_x,
+                self.h - 245
+            )
+
+            self._text(
+                screen,
+                "RỪNG TINH LINH",
+                self.heading,
+                GOLD,
+                (
+                    self.w // 2,
+                    42
+                )
+            )
+
+            self._dialog(
+                screen,
+                "Hiệp sĩ",
+                "Một ngôi nhà giữa khu rừng...? "
+                "Ta phải tiến lại gần xem sao."
+            )
+
+        # -------------------------
+        # HỘI THOẠI MỞ ĐẦU
+        # -------------------------
+        elif self.scene == "intro_dialog":
+            self._mist(
+                screen
+            )
+
+            speaker, text = (
+                self.intro_dialogs[
+                    self.dialog_index
+                ]
+            )
+
+            self._draw_dialog_knight(
+                screen,
+                "left"
+            )
+
+            self._dialog(
+                screen,
+                speaker,
+                text[
+                    :int(
+                        self.char_progress
+                    )
+                ]
+            )
+
+        # -------------------------
+        # TIẾNG VỌNG
+        # -------------------------
+        elif self.scene == "echo":
+            self._draw_echo(
+                screen
+            )
+
+        # -------------------------
+        # GIỚI THIỆU CÂU ĐỐ
+        # -------------------------
+        elif self.scene == "puzzle_intro":
+            shade = pygame.Surface(
+                self.screen_size,
+                pygame.SRCALPHA
+            )
+
+            shade.fill(
+                (
+                    10,
+                    23,
+                    15,
+                    145
+                )
+            )
+
+            screen.blit(
+                shade,
+                (0, 0)
+            )
+
+            self._text(
+                screen,
+                "KÝ ỨC BỊ ĐÁNH RƠI",
+                self.heading,
+                GOLD,
+                (
+                    self.w // 2,
+                    90
+                )
+            )
+
+            self._text(
+                screen,
+                "Một bức tranh khu rừng "
+                "có ngôi nhà nằm trên nền đất.",
+                self.font,
+                WHITE,
+                (
+                    self.w // 2,
+                    235
+                )
+            )
+
+            self._text(
+                screen,
+                "Những miếng gỗ vương vãi "
+                "cạnh một khung gỗ trống.",
+                self.font,
+                WHITE,
+                (
+                    self.w // 2,
+                    275
+                )
+            )
+
+            self._text(
+                screen,
+                "Hãy ghép các mảnh lại "
+                "để khôi phục bức tranh.",
+                self.font,
+                WHITE,
+                (
+                    self.w // 2,
+                    315
+                )
+            )
+
+            self._text(
+                screen,
+                "ENTER / SPACE / click để bắt đầu",
+                self.small,
+                GOLD,
+                (
+                    self.w // 2,
+                    self.h - 45
+                )
+            )
+
+        # -------------------------
+        # TINH LINH XUẤT HIỆN
+        # -------------------------
+        elif self.scene == "spirit_reveal":
+            glow = pygame.Surface(
+                self.screen_size,
+                pygame.SRCALPHA
+            )
+
+            glow.fill(
+                (
+                    28,
+                    54,
+                    30,
+                    80
+                )
+            )
+
+            screen.blit(
+                glow,
+                (0, 0)
+            )
+
+            center = (
+                self.w // 2,
+                self.h // 2 - 55
+            )
+
+            ring_layer = pygame.Surface(
+                self.screen_size,
+                pygame.SRCALPHA
+            )
+
+            for i in range(5):
+                phase = (
+                    self.timer * 110
+                    + i * 65
+                ) % 190
+
+                radius = int(
+                    40 + phase
+                )
+
+                alpha = max(
+                    0,
+                    int(
+                        100
+                        * (
+                            1
+                            - phase / 190
+                        )
+                    )
+                )
+
+                pygame.draw.circle(
+                    ring_layer,
+                    (
+                        218,
+                        245,
+                        137,
+                        alpha
+                    ),
+                    center,
+                    radius,
+                    2
+                )
+
+            screen.blit(
+                ring_layer,
+                (0, 0)
+            )
+
+            self._spirit(
+                screen,
+                "surprised",
+                center
+            )
+
+            self._text(
+                screen,
+                "Một tinh linh hiện ra giữa ánh sáng!",
+                self.heading,
+                GOLD,
+                (
+                    self.w // 2,
+                    55
+                )
+            )
+
+            self._text(
+                screen,
+                "ENTER / SPACE / click để đối thoại",
+                self.small,
+                WHITE,
+                (
+                    self.w // 2,
+                    self.h - 35
+                )
+            )
+
+        # -------------------------
+        # HỘI THOẠI VỚI TINH LINH
+        # -------------------------
+        elif self.scene == "dialog":
+            shade = pygame.Surface(
+                self.screen_size,
+                pygame.SRCALPHA
+            )
+
+            shade.fill(
+                (
+                    0,
+                    0,
+                    0,
+                    45
+                )
+            )
+
+            screen.blit(
+                shade,
+                (0, 0)
+            )
+
+            speaker, text, expression = (
+                self.dialogs[
+                    self.dialog_index
+                ]
+            )
+
+            # Tinh linh bên trái
+            self._spirit(
+                screen,
+                expression,
+                (
+                    self.w // 2 - 250,
+                    self.h // 2 - 80
+                ),
+                (205, 235)
+            )
+
+            # Hiệp sĩ bên phải
+            if self.knight_dialog is not None:
+                rect = self.knight_dialog.get_rect(
+                    midbottom=(
+                        self.w - 155,
+                        self.h - 175
+                    )
+                )
+
+                screen.blit(
+                    self.knight_dialog,
+                    rect
+                )
+
+            self._dialog(
+                screen,
+                speaker,
+                text[
+                    :int(
+                        self.char_progress
+                    )
+                ]
+            )
+
+        # -------------------------
+        # KẾT THÚC
+        # -------------------------
+        elif self.scene == "ending":
+            shade = pygame.Surface(
+                self.screen_size,
+                pygame.SRCALPHA
+            )
+
+            shade.fill(
+                (
+                    5,
+                    15,
+                    10,
+                    130
+                )
+            )
+
+            screen.blit(
+                shade,
+                (0, 0)
+            )
+
+            if self.knight_dialog is not None:
+                rect = self.knight_dialog.get_rect(
+                    midbottom=(
+                        self.w // 2,
+                        self.h - 170
+                    )
+                )
+
+                screen.blit(
+                    self.knight_dialog,
+                    rect
+                )
+
+            self._text(
+                screen,
+                "CHÚC PHÚC CỦA TINH LINH",
+                self.heading,
+                GOLD,
+                (
+                    self.w // 2,
+                    80
+                )
+            )
+
+            self._text(
+                screen,
+                "Bạn đã nhận được sự bảo vệ khỏi khí độc.",
+                self.font,
+                WHITE,
+                (
+                    self.w // 2,
+                    self.h - 130
+                )
+            )
+
+            self._text(
+                screen,
+                "Điểm đến tiếp theo: ĐẦM LẦY ĐỘC",
+                self.font,
+                GOLD,
+                (
+                    self.w // 2,
+                    self.h - 90
+                )
+            )
+
+        # Game stat luôn hiện
+        self.draw_game_state(
+            screen
+        )
+
+    def is_finished(self):
+        return self.finished
+
+    def get_next_scene(self):
+        if self.finished:
+            return "swamp"
+
+        return None
+
+
+def create_forest_scene(game):
+    return ForestScene(game)
