@@ -7,8 +7,6 @@ from settings import (
     SCREEN_HEIGHT,
     FPS,
     GAME_TITLE,
-    DARK_GREEN,
-    WHITE,
 )
 
 from game_state import GameState
@@ -17,7 +15,10 @@ from world_map import WorldMap
 from scenes.start_scene import StartScene
 from scenes.intro_scene import IntroScene
 from scenes.game_over_scene import GameOverScene
-from scenes.placeholder_scene import PlaceholderScene
+from scenes.princess_room import PrincessRoomScene
+from scenes.forest import ForestScene
+from scenes.swamp import SwampScene
+from scenes.dragoncave import DragonCaveScene
 
 
 class Game:
@@ -63,18 +64,10 @@ class Game:
             "world_map": WorldMap(self),
             "game_over": GameOverScene(self),
 
-            "princess_room": PlaceholderScene(
-                self, "Phòng công chúa"
-            ),
-            "spirit_forest": PlaceholderScene(
-                self, "Rừng tinh linh"
-            ),
-            "poison_swamp": PlaceholderScene(
-                self, "Đầm lầy độc"
-            ),
-            "dragon_cave": PlaceholderScene(
-                self, "Hang động của rồng"
-            ),
+            "princess_room": PrincessRoomScene(self),
+            "spirit_forest": ForestScene(self),
+            "poison_swamp": SwampScene(self),
+            "dragon_cave": DragonCaveScene(self),
         }
 
         self.change_scene("start")
@@ -114,17 +107,6 @@ class Game:
 
         self.change_scene("start")
 
-    def draw_map_button(self):
-        if self.current_scene_id in (
-            "start", "intro", "world_map", "game_over"
-        ):
-            return
-
-        self.screen.blit(
-            self.map_icon,
-            self.map_button_rect
-        )
-    
     def run(self):
         running = True
 
@@ -135,21 +117,6 @@ class Game:
                 if event.type == pygame.QUIT:
                     running = False
                     break
-
-                # Mở bản đồ bằng chuột
-                if (
-                    event.type == pygame.MOUSEBUTTONDOWN
-                    and event.button == 1
-                    and self.current_scene_id not in (
-                        "start",
-                        "intro",
-                        "world_map",
-                        "game_over",
-                    )
-                    and self.map_button_rect.collidepoint(event.pos)
-                ):
-                    self.change_scene("world_map")
-                    continue
 
                 # ESC để quay lại khu vực trước đó
                 if (
@@ -177,7 +144,6 @@ class Game:
                 self.change_scene("game_over")
 
             self.current_scene.draw(self.screen)
-            self.draw_map_button()
 
             pygame.display.flip()
 

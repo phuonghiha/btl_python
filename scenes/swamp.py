@@ -16,23 +16,17 @@ from puzzes.swamp.swamp_puzzle import (
     SwampPuzzle,
     TITLE_FONT_PATH,
 )
-from scene import Scene
+from base_scene import BaseScene, draw_dialogue_frame
 from settings import (
-    DARK_BROWN,
-    GOLD,
-    RED,
     SCREEN_WIDTH,
-    WHITE,
 )
 
-HINT_PAPER = (240, 222, 181)
 HINT_INK = (104, 69, 43)
-HINT_BORDER = (91, 59, 36)
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCENE_ASSET_DIR = os.path.join(BASE_DIR, "assets", "images", "sence_3")
-BACKGROUND_PATH = os.path.join(SCENE_ASSET_DIR, "background.png")
+BACKGROUND_PATH = os.path.join(SCENE_ASSET_DIR, "bg.png")
 BACKGROUND2_PATH = os.path.join(SCENE_ASSET_DIR, "background2.png")
 LILY_PAD_DIR = os.path.join(SCENE_ASSET_DIR, "Lá sen")
 
@@ -49,14 +43,13 @@ WRONG_RETURN_DURATION = 0.85
 WRONG_RETURN_ARC = 96
 
 LEFT_BANK = (
-    (0, 270), (70, 270), (130, 320), (190, 365), (260, 400),
-    (340, 430), (430, 455), (520, 480), (580, 520), (650, 610),
-    (700, 720), (0, 720),
+    (0, 280), (70, 300), (140, 340), (220, 380), (300, 430),
+    (370, 500), (450, 570), (540, 650), (620, 720), (0, 720),
 )
 FAR_BANK = (
-    (790, 205), (810, 175), (850, 150), (900, 132), (960, 132),
-    (1020, 148), (1085, 170), (1145, 195), (1130, 225),
-    (1080, 245), (1000, 250), (920, 245), (850, 232), (810, 222),
+    (800, 204), (825, 177), (860, 155), (920, 145), (980, 153),
+    (1035, 170), (1090, 190), (1120, 207), (1100, 224),
+    (1050, 235), (990, 235), (925, 228), (860, 220), (825, 215),
 )
 
 
@@ -88,7 +81,7 @@ def _point_in_polygon(point, polygon):
     return inside
 
 
-class SwampScene(Scene):
+class SwampScene(BaseScene):
 
     def __init__(self, game):
         super().__init__(game)
@@ -128,7 +121,7 @@ class SwampScene(Scene):
             )
 
         self.puzzle = LilyPadPuzzle()
-        self.player_start = (150, 525)
+        self.player_start = (190, 505)
         self.player = Player(*self.player_start)
         self.player_land = "left"
         self.frog = Frog(900, 80)
@@ -136,12 +129,14 @@ class SwampScene(Scene):
         self.duel_puzzle = SwampPuzzle(
             self.player, self.frog, self.game_state, game.screen
         )
+        self._sword_inventory_synced = False
 
         self.font = pygame.font.Font(TITLE_FONT_PATH, 24)
         self.small_font = pygame.font.Font(CONTENT_FONT_PATH, 18)
         self._jump = None
         self._wrong_sink = None
         self._wrong_pad_landing = None
+        self._wrong_pad_to_respawn = None
         self._returning_after_wrong = False
         self._return_to_left_bank = False
         self._finish_after_jump = False
@@ -197,6 +192,9 @@ class SwampScene(Scene):
         )
 
     def handle_event(self, event):
+        if super().handle_event(event):
+            return
+
         if (
             event.type != pygame.MOUSEBUTTONDOWN
             or event.button != 1
@@ -288,6 +286,9 @@ class SwampScene(Scene):
         self._start_jump(target)
 
     def update(self, dt):
+        if self.inventory_open:
+            return
+
         if self.game_state.health <= 0:
             return
 
@@ -311,6 +312,12 @@ class SwampScene(Scene):
             self.frog.jump()
 
         self.duel_puzzle.update(dt)
+        if self.duel_puzzle.sword_awarded and not self._sword_inventory_synced:
+            self.add_item(
+                "holy_sword", "Kiếm thánh", "assets/images/Sword.png"
+            )
+            self.game_state.has_holy_sword = True
+            self._sword_inventory_synced = True
         if self.duel_puzzle.active:
             return
 
@@ -359,7 +366,9 @@ class SwampScene(Scene):
         self.player.animation.play("front")
 
         if self._wrong_pad_landing is not None:
-            self.puzzle.remove_decoy(self._wrong_pad_landing)
+            self._wrong_pad_to_respawn = self.puzzle.remove_decoy(
+                self._wrong_pad_landing
+            )
             self._wrong_pad_landing = None
             self._wrong_sink = {
                 "start_y": self.player.y,
@@ -368,6 +377,8 @@ class SwampScene(Scene):
         elif self._returning_after_wrong:
             self._returning_after_wrong = False
             self.puzzle.return_to_shore()
+            self.puzzle.restore_decoy(self._wrong_pad_to_respawn)
+            self._wrong_pad_to_respawn = None
             self.player_land = "left"
         elif self._return_to_left_bank:
             self._return_to_left_bank = False
@@ -455,6 +466,7 @@ class SwampScene(Scene):
             self._draw_half_submerged_player(screen)
         self.duel_puzzle.draw(screen)
         self._draw_interface(screen)
+        super().draw(screen)
 
     def _draw_half_submerged_player(self, screen):
         frame = self.player.animation.get_current_frame()
@@ -477,40 +489,6 @@ class SwampScene(Scene):
         pygame.draw.ellipse(screen, (158, 190, 132), ripple, 2)
 
     def _draw_interface(self, screen):
-        title = self.font.render("ĐẦM LẦY ĐỘC", True, GOLD)
-        screen.blit(title, (24, 12))
-
-        health_x, health_y = 24, 78
-        health_width, health_height = 210, 18
-        pygame.draw.rect(
-            screen,
-            DARK_BROWN,
-            (health_x, health_y, health_width, health_height),
-            border_radius=5,
-        )
-        ratio = max(
-            0.0,
-            min(1.0, self.game_state.health / self.game_state.max_health),
-        )
-        if ratio > 0:
-            pygame.draw.rect(
-                screen,
-                RED,
-                (
-                    health_x + 2,
-                    health_y + 2,
-                    int((health_width - 4) * ratio),
-                    health_height - 4,
-                ),
-                border_radius=4,
-            )
-        health_label = self.small_font.render(
-            f"Máu: {int(self.game_state.health)}/{self.game_state.max_health}",
-            True,
-            WHITE,
-        )
-        screen.blit(health_label, (health_x + health_width + 12, health_y - 2))
-
         if self.message:
             max_text_width = screen.get_width() - 88
             words = self.message.split()
@@ -536,8 +514,7 @@ class SwampScene(Scene):
             hint_panel = pygame.Rect(
                 24, screen.get_height() - hint_height - 18, hint_width, hint_height
             )
-            pygame.draw.rect(screen, HINT_PAPER, hint_panel, border_radius=10)
-            pygame.draw.rect(screen, HINT_BORDER, hint_panel, 2, border_radius=10)
+            draw_dialogue_frame(screen, hint_panel)
             text_y = hint_panel.y + 10
             for line in rendered_lines:
                 screen.blit(

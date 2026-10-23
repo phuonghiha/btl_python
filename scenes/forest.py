@@ -2,7 +2,7 @@ import math
 import os
 import pygame
 
-from scene import Scene
+from base_scene import BaseScene, draw_dialogue_frame
 from settings import GOLD, WHITE
 from puzzes.forest.for_puz import TangramGame
 
@@ -37,8 +37,6 @@ SPIRIT_FILES = {
     "thinking": "new spirit - normal.png"
 }
 
-PAPER = (244, 235, 210)
-PAPER_BORDER = (111, 78, 43)
 PAPER_BORDER_LIGHT = (157, 119, 72)
 INK = (45, 35, 25)
 INK_LIGHT = (75, 55, 38)
@@ -152,7 +150,7 @@ def load_spirit_frames():
     return result
 
 
-class ForestScene(Scene):
+class ForestScene(BaseScene):
 
     def __init__(self, game):
         super().__init__(game)
@@ -193,8 +191,6 @@ class ForestScene(Scene):
         self.knight_animation_speed = 0.14
 
         self.spirits = load_spirit_frames()
-
-        self.game_state = game.game_state
 
         self.scene = "approach"
         self.timer = 0.0
@@ -320,6 +316,9 @@ class ForestScene(Scene):
             )
         ]
 
+    def reset(self):
+        self.__init__(self.game)
+
     def _background(self, path):
         if os.path.isfile(path):
             return cover(
@@ -360,41 +359,20 @@ class ForestScene(Scene):
         x = 50
         y = self.h - ph - 25
 
-        panel = pygame.Surface(
-            (pw, ph),
-            pygame.SRCALPHA
-        )
-
-        panel.fill((*PAPER, 250))
-
+        panel = pygame.Rect(x, y, pw, ph)
+        draw_dialogue_frame(screen, panel)
         pygame.draw.rect(
-            panel,
-            PAPER_BORDER,
-            panel.get_rect(),
-            3,
-            border_radius=6
-        )
-
-        pygame.draw.rect(
-            panel,
-            PAPER_BORDER_LIGHT,
-            (8, 8, pw - 16, ph - 16),
-            1,
-            border_radius=4
-        )
-
-        pygame.draw.rect(
-            panel,
+            screen,
             (225, 210, 181),
-            (16, 13, pw - 32, 34),
+            (x + 16, y + 13, pw - 32, 34),
             border_radius=4
         )
 
         pygame.draw.line(
-            panel,
+            screen,
             PAPER_BORDER_LIGHT,
-            (18, 48),
-            (pw - 18, 48),
+            (x + 18, y + 48),
+            (x + pw - 18, y + 48),
             1
         )
 
@@ -404,7 +382,7 @@ class ForestScene(Scene):
             INK
         )
 
-        panel.blit(name_image, (28, 19))
+        screen.blit(name_image, (x + 28, y + 19))
 
         lines = self._wrap(
             text,
@@ -419,12 +397,10 @@ class ForestScene(Scene):
                 INK
             )
 
-            panel.blit(
+            screen.blit(
                 image,
-                (28, 58 + i * 27)
+                (x + 28, y + 58 + i * 27)
             )
-
-        screen.blit(panel, (x, y))
 
         self._text(
             screen,
@@ -756,8 +732,11 @@ class ForestScene(Scene):
 
         elif self.scene == "ending":
             self.finished = True
+            self.game.change_scene(self.get_next_scene())
 
     def handle_event(self, event):
+        if super().handle_event(event):
+            return
         if self.scene == "puzzle":
             if self.puzzle:
                 self.puzzle.handle_event(event)
@@ -776,6 +755,8 @@ class ForestScene(Scene):
             self._next()
 
     def update(self, dt):
+        if self.inventory_open:
+            return
         self.timer += dt
 
         if self.scene == "approach":
@@ -822,6 +803,7 @@ class ForestScene(Scene):
     def draw(self, screen):
         if self.scene == "puzzle" and self.puzzle:
             self.puzzle.draw()
+            super().draw(screen)
             return
 
         screen.blit(
@@ -855,14 +837,6 @@ class ForestScene(Scene):
                 screen,
                 self.knight_x,
                 self.h - 245
-            )
-
-            self._text(
-                screen,
-                "RỪNG TINH LINH",
-                self.heading,
-                GOLD,
-                (self.w // 2, 42)
             )
 
             self._dialog(
@@ -1124,12 +1098,14 @@ class ForestScene(Scene):
                 (self.w // 2, self.h - 40)
             )
 
+        super().draw(screen)
+
     def is_finished(self):
         return self.finished
 
     def get_next_scene(self):
         if self.finished:
-            return "swamp"
+            return "poison_swamp"
 
         return None
 

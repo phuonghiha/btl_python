@@ -7,7 +7,7 @@ import pygame
 
 from animation.animation_manager import AnimationManager
 from characters.knight import Knight
-from scene import Scene
+from base_scene import BaseScene, draw_dialogue_frame
 from settings import SCREEN_HEIGHT, SCREEN_WIDTH
 
 
@@ -34,7 +34,7 @@ class PrincessRoomState:
     princess_room_completed: bool = False
 
 
-class PrincessRoomScene(Scene):
+class PrincessRoomScene(BaseScene):
     """Room exploration, vintage dialogue, inventory and the dragon clue."""
 
     def __init__(self, game):
@@ -59,7 +59,6 @@ class PrincessRoomScene(Scene):
         self.letter_panel_image = self._scaled(self.letter_image, (760, 370))
         self.scale_tiny = self._scaled(self.scale_image, (6, 8))
         self.scale_found_icon = self._scaled(self.scale_image, (18, 22))
-        self.scale_inventory_icon = self._scaled(self.scale_image, (36, 36))
         self.cat = self._make_cat()
         self.cat_x = 930.0
         self.cat_y = 545
@@ -76,8 +75,6 @@ class PrincessRoomScene(Scene):
         self.type_progress = 0.0
         self.puzzle_text = ""
         self.puzzle_message = ""
-        self.inventory_open = False
-        self.selected_item = None
         self.notice = ""
         self.notice_time = 0.0
         self.fade = 0
@@ -91,9 +88,13 @@ class PrincessRoomScene(Scene):
             "magnifying_glass": "Kính lúp",
             "red_dragon_scale": "Vảy rồng đỏ",
         }
+        self.item_images = {
+            "pink_yarn": "assets/images/sence_1/Yarn_ball.png",
+            "magnifying_glass": "assets/images/sence_1/magnifying glass.png",
+            "red_dragon_scale": "assets/images/sence_1/Dragon_scale.png",
+        }
         self.close_rect = pygame.Rect(0, 0, 0, 0)
         self.submit_rect = pygame.Rect(0, 0, 0, 0)
-        self.inventory_close = pygame.Rect(0, 0, 0, 0)
         self.after_dialog = None
         self._say("Hiệp sĩ", "Con mèo này thật là đáng nghi...", self._mark_intro_shown)
 
@@ -173,11 +174,15 @@ class PrincessRoomScene(Scene):
         self.notice, self.notice_time = text, 2.6
 
     def _add_item(self, item):
-        if not self.game_state.has_item(item):
-            self.game_state.add_item(item)
+        if self.add_item(item, self.items[item], self.item_images[item]):
             self._notify("Đã nhận được: " + self.items[item])
 
     def handle_event(self, event):
+        if super().handle_event(event):
+            self.state.magnifier_active = (
+                self.selected_item == "magnifying_glass"
+            )
+            return
         if event.type == pygame.MOUSEMOTION:
             self.mouse_pos = event.pos
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -213,16 +218,8 @@ class PrincessRoomScene(Scene):
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 self.modal = None
             return
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_i:
-            self.inventory_open = not self.inventory_open
-            return
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if getattr(self, "inventory_button", pygame.Rect(0, 0, 0, 0)).collidepoint(event.pos):
-                self.inventory_open = not self.inventory_open
-                return
-            if self.inventory_open:
-                self._inventory_click(event.pos)
-            elif self.selected_item:
+            if self.selected_item:
                 self._use_selected(event.pos)
             else:
                 self._room_click(event.pos)
@@ -275,19 +272,6 @@ class PrincessRoomScene(Scene):
     def _open_chest(self):
         self.modal = None
         self._notify("Rương đã mở. Bên trong có cuộn len màu hồng.")
-
-    def _inventory_click(self, pos):
-        inventory = self.game_state.inventory
-        cols = 3
-        for i, item in enumerate(inventory):
-            rect = pygame.Rect(365 + (i % cols) * 185, 300 + (i // cols) * 110, 165, 85)
-            if rect.collidepoint(pos):
-                self.selected_item = None if self.selected_item == item else item
-                self.inventory_open = False
-                self.state.magnifier_active = item == "magnifying_glass" and self.selected_item == item
-                return
-        if self.inventory_close.collidepoint(pos):
-            self.inventory_open = False
 
     def _use_selected(self, pos):
         if self.selected_item == "magnifying_glass":
@@ -366,6 +350,8 @@ class PrincessRoomScene(Scene):
         self.state.cat_questioned = True
 
     def update(self, dt):
+        if self.inventory_open:
+            return
         if self.knight:
             self.knight.update(dt)
         if self.modal == "dialog" and self.dialog_page < len(self.dialog_pages):
@@ -409,25 +395,23 @@ class PrincessRoomScene(Scene):
         if not self.state.magnifier_collected:
             self._draw_magnifier_item(screen, self.magnifier_hitbox.center, 0.48)
         self._draw_scale(screen)
-        self._draw_hud(screen)
         if self.modal == "dialog":
             self._draw_dialog(screen)
         elif self.modal == "puzzle":
             self._draw_puzzle(screen)
         elif self.modal == "letter":
             self._draw_letter(screen)
-        if self.inventory_open:
-            self._draw_inventory(screen)
         if self.state.magnifier_active:
             self._draw_lens(screen)
         if self.notice_time > 0:
-            self._panel(screen, pygame.Rect(350, 22, 580, 52))
+            draw_dialogue_frame(screen, pygame.Rect(350, 22, 580, 52))
             self._text(screen, self.notice, self.small, (70, 45, 26), (640, 48), True)
         if self.transitioning:
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
             overlay.fill((0, 0, 0))
             overlay.set_alpha(self.fade)
             screen.blit(overlay, (0, 0))
+        super().draw(screen)
 
     def _draw_cat(self, screen):
         if self.cat:
@@ -501,17 +485,9 @@ class PrincessRoomScene(Scene):
         screen.blit(lens, (lens_cx - radius, lens_cy - radius))
         pygame.draw.circle(screen, (191, 143, 63), (lens_cx, lens_cy), radius, 7)
 
-    def _draw_hud(self, screen):
-        self.inventory_button = pygame.Rect(22, 20, 210, 45)
-        self._panel(screen, self.inventory_button)
-        self._text(screen, "TÚI ĐỒ  [I]", self.small, (69, 47, 28), self.inventory_button.center, True)
-        if self.selected_item:
-            label = self.items[self.selected_item]
-            self._text(screen, "Đang chọn: " + label, self.small, (255, 245, 212), (24, 77))
-
     def _draw_dialog(self, screen):
         box = pygame.Rect(72, 520, SCREEN_WIDTH - 144, 160)
-        self._panel(screen, box)
+        draw_dialogue_frame(screen, box)
         self._text(screen, self.dialogue[0], self.font, (112, 65, 34), (box.x + 27, box.y + 18))
         page = self.dialog_pages[self.dialog_page:self.dialog_page + 3]
         remaining = int(self.type_progress)
@@ -525,7 +501,7 @@ class PrincessRoomScene(Scene):
 
     def _draw_puzzle(self, screen):
         box = pygame.Rect(360, 155, 560, 410)
-        self._panel(screen, box)
+        draw_dialogue_frame(screen, box)
         self.close_rect = pygame.Rect(box.right - 48, box.y + 12, 34, 34)
         self.submit_rect = pygame.Rect(box.centerx - 88, box.y + 300, 176, 48)
         self._text(screen, "RƯƠNG BÁU", self.title_font, (89, 55, 30), (box.centerx, box.y + 46), True)
@@ -549,28 +525,6 @@ class PrincessRoomScene(Scene):
         self._text(screen, "LÁ THƯ BÍ ẨN", self.title_font, (97, 57, 31), (box.centerx, box.y + 70), True)
         self._text(screen, "Thứ đỏ rực đang ngủ dưới ánh trăng.", self.font, (64, 45, 32), (box.centerx, box.y + 180), True)
         self._button(screen, pygame.Rect(box.centerx - 80, box.bottom - 75, 160, 46), "ĐÓNG THƯ")
-
-    def _draw_inventory(self, screen):
-        box = pygame.Rect(300, 210, 680, 360)
-        self._panel(screen, box)
-        self.inventory_close = pygame.Rect(box.right - 48, box.y + 10, 34, 34)
-        self._text(screen, "TÚI ĐỒ", self.title_font, (89, 55, 30), (box.centerx, box.y + 48), True)
-        for i, item in enumerate(self.game_state.inventory):
-            rect = pygame.Rect(365 + (i % 3) * 185, 300 + (i // 3) * 110, 165, 85)
-            color = (231, 211, 166) if item == self.selected_item else (243, 230, 198)
-            pygame.draw.rect(screen, color, rect, border_radius=8)
-            pygame.draw.rect(screen, (137, 91, 48), rect, 2, border_radius=8)
-            if item == "pink_yarn":
-                self._draw_yarn(screen, (rect.x + 37, rect.centery), 18)
-            elif item == "magnifying_glass":
-                self._draw_magnifier_item(screen, (rect.x + 34, rect.centery), 0.8)
-            elif item == "red_dragon_scale" and self.scale_inventory_icon:
-                screen.blit(self.scale_inventory_icon, self.scale_inventory_icon.get_rect(center=(rect.x + 36, rect.centery)))
-            else:
-                pygame.draw.ellipse(screen, (183, 48, 45), (rect.x + 18, rect.centery - 10, 36, 20))
-            self._text(screen, self.items.get(item, item), self.small, (70, 49, 30), (rect.x + 62, rect.centery), False)
-        self._button(screen, self.inventory_close, "×", smaller=True)
-        self._text(screen, "Chọn vật phẩm để sử dụng; I hoặc × để đóng", self.small, (87, 63, 40), (box.centerx, box.bottom - 24), True)
 
     @staticmethod
     def _panel(screen, rect, paper=False):
