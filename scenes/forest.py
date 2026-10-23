@@ -2,7 +2,7 @@ import math
 import os
 import pygame
 
-from base_scene import BaseScene, draw_dialogue_frame
+from scene import Scene
 from settings import GOLD, WHITE
 from puzzes.forest.for_puz import TangramGame
 
@@ -37,6 +37,8 @@ SPIRIT_FILES = {
     "thinking": "new spirit - normal.png"
 }
 
+PAPER = (244, 235, 210)
+PAPER_BORDER = (111, 78, 43)
 PAPER_BORDER_LIGHT = (157, 119, 72)
 INK = (45, 35, 25)
 INK_LIGHT = (75, 55, 38)
@@ -120,7 +122,7 @@ def load_walk_frames():
 
         if image is not None:
             frames.append(
-                scale_keep_ratio(image, (150, 205))
+                scale_keep_ratio(image, (175, 235))
             )
 
     return frames
@@ -150,7 +152,7 @@ def load_spirit_frames():
     return result
 
 
-class ForestScene(BaseScene):
+class ForestScene(Scene):
 
     def __init__(self, game):
         super().__init__(game)
@@ -182,7 +184,7 @@ class ForestScene(BaseScene):
             self.knight_walk_frames = [
                 scale_keep_ratio(
                     self.knight_idle,
-                    (150, 205)
+                    (175, 235)
                 )
             ]
 
@@ -191,6 +193,8 @@ class ForestScene(BaseScene):
         self.knight_animation_speed = 0.14
 
         self.spirits = load_spirit_frames()
+
+        self.game_state = game.game_state
 
         self.scene = "approach"
         self.timer = 0.0
@@ -242,82 +246,65 @@ class ForestScene(BaseScene):
         self.dialogs = [
             (
                 "Tinh linh",
-                "Ngươi đã khôi phục được bức tranh "
-                "mà khu rừng che giấu. "
-                "Ta công nhận trí tuệ của ngươi.",
+                "Ngươi đã khôi phục được bức tranh mà khu rừng che giấu. Ta công nhận trí tuệ của ngươi.",
                 "happy"
             ),
             (
+                "Tinh linh",
+                "Nhưng... khoan đã. Ta cảm nhận được một luồng khí rất quen thuộc trên người ngươi.",
+                "thinking"
+            ),
+            (
                 "Hiệp sĩ",
-                "Ta đang tìm đường đến hang rồng. "
-                "Ngươi có biết con đường nào dẫn đến đó không?",
+                "Ngươi đang nói đến thứ này sao?",
+                "curious"
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta tìm thấy nó trên đường đi. Một chiếc vảy rồng.",
                 "curious"
             ),
             (
                 "Tinh linh",
-                "Có. Nhưng muốn đến hang rồng, "
-                "ngươi phải vượt qua Đầm Lầy Độc ở phía trước.",
-                "stern"
+                "Vảy rồng... Ta hiểu rồi. Ngươi đang trên đường tìm kiếm con rồng.",
+                "surprised"
             ),
             (
                 "Hiệp sĩ",
-                "Đầm Lầy Độc? Vậy khí độc trong đó "
-                "chính là thứ đang bao phủ khu rừng này sao?",
-                "stern"
+                "Đúng vậy. Ta đang tìm đường đến hang rồng.",
+                "curious"
             ),
             (
                 "Tinh linh",
-                "Đúng vậy. Khí độc đang dần lan ra "
-                "và ăn mòn mọi sinh vật trên đường đi của nó.",
-                "stern"
-            ),
-            (
-                "Tinh linh",
-                "Ngươi đã chứng minh được trí tuệ của mình. "
-                "Ta sẽ ban cho ngươi một lời chúc phúc.",
+                "Vậy hãy nhận lấy viên đá quý này. Nó mang theo lời chúc phúc của tinh linh.",
                 "happy"
             ),
             (
                 "Tinh linh",
-                "Lời chúc này sẽ bảo vệ ngươi khỏi khí độc "
-                "khi vượt qua khu rừng và tiến vào đầm lầy.",
+                "Nó sẽ giúp ngươi vượt qua khí độc trong Đầm Lầy Độc phía trước.",
                 "happy"
             ),
             (
                 "Hiệp sĩ",
-                "Ta hiểu rồi. Cảm ơn ngươi. "
-                "Ta sẽ tiếp tục đến Đầm Lầy Độc "
-                "để tìm đường tới hang rồng.",
+                "Ta hiểu rồi. Cảm ơn ngươi. Ta sẽ tiếp tục lên đường.",
                 "happy"
             ),
             (
                 "Tinh linh",
-                "Khoan đã... trước khi đi, "
-                "hãy nhớ lấy một điều.",
-                "thinking"
-            ),
-            (
-                "Tinh linh",
-                "Trên hành trình phía trước, "
-                "có những thứ mắt thấy chưa chắc đã là thật.",
+                "Hãy cẩn thận, hiệp sĩ. Trên hành trình phía trước, có những thứ mắt thấy chưa chắc đã là thật.",
                 "stern"
             ),
             (
                 "Hiệp sĩ",
-                "Ta sẽ ghi nhớ lời cảnh báo đó. "
-                "Tạm biệt, tinh linh của khu rừng.",
+                "Ta sẽ ghi nhớ lời cảnh báo đó. Tạm biệt, tinh linh của khu rừng.",
                 "happy"
             ),
             (
                 "Tinh linh",
-                "Tạm biệt, hiệp sĩ. "
-                "Chúc ngươi bình an trên con đường phía trước.",
+                "Tạm biệt, hiệp sĩ. Chúc ngươi bình an trên con đường phía trước.",
                 "happy"
             )
         ]
-
-    def reset(self):
-        self.__init__(self.game)
 
     def _background(self, path):
         if os.path.isfile(path):
@@ -359,20 +346,41 @@ class ForestScene(BaseScene):
         x = 50
         y = self.h - ph - 25
 
-        panel = pygame.Rect(x, y, pw, ph)
-        draw_dialogue_frame(screen, panel)
+        panel = pygame.Surface(
+            (pw, ph),
+            pygame.SRCALPHA
+        )
+
+        panel.fill((*PAPER, 250))
+
         pygame.draw.rect(
-            screen,
+            panel,
+            PAPER_BORDER,
+            panel.get_rect(),
+            3,
+            border_radius=6
+        )
+
+        pygame.draw.rect(
+            panel,
+            PAPER_BORDER_LIGHT,
+            (8, 8, pw - 16, ph - 16),
+            1,
+            border_radius=4
+        )
+
+        pygame.draw.rect(
+            panel,
             (225, 210, 181),
-            (x + 16, y + 13, pw - 32, 34),
+            (16, 13, pw - 32, 34),
             border_radius=4
         )
 
         pygame.draw.line(
-            screen,
+            panel,
             PAPER_BORDER_LIGHT,
-            (x + 18, y + 48),
-            (x + pw - 18, y + 48),
+            (18, 48),
+            (pw - 18, 48),
             1
         )
 
@@ -382,7 +390,7 @@ class ForestScene(BaseScene):
             INK
         )
 
-        screen.blit(name_image, (x + 28, y + 19))
+        panel.blit(name_image, (28, 19))
 
         lines = self._wrap(
             text,
@@ -397,10 +405,12 @@ class ForestScene(BaseScene):
                 INK
             )
 
-            screen.blit(
+            panel.blit(
                 image,
-                (x + 28, y + 58 + i * 27)
+                (28, 58 + i * 27)
             )
+
+        screen.blit(panel, (x, y))
 
         self._text(
             screen,
@@ -447,7 +457,7 @@ class ForestScene(BaseScene):
 
         image = scale_keep_ratio(
             image,
-            (210, 270)
+            (235, 300)
         )
 
         if side == "left":
@@ -473,7 +483,7 @@ class ForestScene(BaseScene):
 
         image = scale_keep_ratio(
             self.knight_idle,
-            (175, 235)
+            (200, 270)
         )
 
         rect = image.get_rect(
@@ -722,21 +732,13 @@ class ForestScene(BaseScene):
             if self.dialog_index >= len(
                 self.dialogs
             ):
-                if hasattr(
-                    self.game_state,
-                    "forest_blessing"
-                ):
-                    self.game_state.forest_blessing = True
-
+                self.game_state.forest_gemstone = True
                 self.scene = "ending"
 
         elif self.scene == "ending":
             self.finished = True
-            self.game.change_scene(self.get_next_scene())
 
     def handle_event(self, event):
-        if super().handle_event(event):
-            return
         if self.scene == "puzzle":
             if self.puzzle:
                 self.puzzle.handle_event(event)
@@ -755,8 +757,6 @@ class ForestScene(BaseScene):
             self._next()
 
     def update(self, dt):
-        if self.inventory_open:
-            return
         self.timer += dt
 
         if self.scene == "approach":
@@ -803,7 +803,6 @@ class ForestScene(BaseScene):
     def draw(self, screen):
         if self.scene == "puzzle" and self.puzzle:
             self.puzzle.draw()
-            super().draw(screen)
             return
 
         screen.blit(
@@ -837,6 +836,14 @@ class ForestScene(BaseScene):
                 screen,
                 self.knight_x,
                 self.h - 245
+            )
+
+            self._text(
+                screen,
+                "RỪNG TINH LINH",
+                self.heading,
+                GOLD,
+                (self.w // 2, 42)
             )
 
             self._dialog(
@@ -984,7 +991,7 @@ class ForestScene(BaseScene):
                 screen,
                 "surprised",
                 center,
-                (230, 265)
+                (255, 295)
             )
 
             self._text(
@@ -1026,10 +1033,10 @@ class ForestScene(BaseScene):
                 screen,
                 spirit_expression,
                 (
-                    self.w // 2 - 250,
+                    self.w // 2 - 300,
                     self.h // 2 - 80
                 ),
-                (205, 235)
+                (255, 295)
             )
 
             self._draw_dialog_knight(
@@ -1068,7 +1075,7 @@ class ForestScene(BaseScene):
 
             self._text(
                 screen,
-                "CHÚC PHÚC CỦA TINH LINH",
+                "ĐÁ QUÝ TINH LINH",
                 self.heading,
                 GOLD,
                 (self.w // 2, 80)
@@ -1076,7 +1083,7 @@ class ForestScene(BaseScene):
 
             self._text(
                 screen,
-                "Bạn đã nhận được sự bảo vệ khỏi khí độc.",
+                "Bạn đã nhận được đá quý tinh linh.",
                 self.font,
                 WHITE,
                 (self.w // 2, self.h - 130)
@@ -1098,14 +1105,12 @@ class ForestScene(BaseScene):
                 (self.w // 2, self.h - 40)
             )
 
-        super().draw(screen)
-
     def is_finished(self):
         return self.finished
 
     def get_next_scene(self):
         if self.finished:
-            return "poison_swamp"
+            return "swamp"
 
         return None
 
