@@ -37,15 +37,19 @@ FOREST = os.path.join(
     "forest_no_house.png"
 )
 
-SPIRIT_SHEET = os.path.join(
-    SPR,
-    "spirit",
-    "new spirit.png"
-)
-
 KNIGHT_DIR = os.path.join(
     SPR,
     "knight"
+)
+
+SPIRIT_DIR = os.path.join(
+    SPR,
+    "spirit"
+)
+
+SPIRIT_SHEET = os.path.join(
+    SPIRIT_DIR,
+    "new spirit.png"
 )
 
 
@@ -60,7 +64,6 @@ EXPRESSIONS = {
 
 
 PAPER = (244, 235, 210)
-PAPER_LIGHT = (250, 244, 226)
 PAPER_BORDER = (111, 78, 43)
 PAPER_BORDER_LIGHT = (157, 119, 72)
 
@@ -104,7 +107,46 @@ def cover(image, size):
     ).copy()
 
 
-def load_knight(size):
+def scale_keep_ratio(image, size):
+    iw, ih = image.get_size()
+
+    if iw <= 0 or ih <= 0:
+        return image
+
+    scale = min(
+        size[0] / iw,
+        size[1] / ih
+    )
+
+    new_size = (
+        max(
+            1,
+            int(iw * scale)
+        ),
+        max(
+            1,
+            int(ih * scale)
+        )
+    )
+
+    return pygame.transform.smoothscale(
+        image,
+        new_size
+    )
+
+
+def crop_transparent(image):
+    rect = image.get_bounding_rect()
+
+    if rect.width > 0 and rect.height > 0:
+        return image.subsurface(
+            rect
+        ).copy()
+
+    return image
+
+
+def get_image_paths(folder):
     paths = []
 
     for ext in (
@@ -116,29 +158,69 @@ def load_knight(size):
         paths.extend(
             glob.glob(
                 os.path.join(
-                    KNIGHT_DIR,
+                    folder,
+                    "**",
                     ext
-                )
+                ),
+                recursive=True
             )
         )
 
-    paths.sort(
-        key=lambda p: (
-            0
-            if any(
-                key in os.path.basename(p).lower()
-                for key in (
-                    "idle",
-                    "front",
-                    "dialog",
-                    "talk",
-                    "stand",
-                    "knight"
-                )
-            )
-            else 1,
-            p
-        )
+    paths.sort()
+
+    return paths
+
+
+def get_animation_name(path):
+    name = os.path.basename(
+        path
+    ).lower()
+
+    parent = os.path.basename(
+        os.path.dirname(path)
+    ).lower()
+
+    text = parent + " " + name
+
+    if (
+        "walk" in text
+        or "walking" in text
+        or "move" in text
+    ):
+        return "walk"
+
+    if (
+        "run" in text
+        or "running" in text
+    ):
+        return "walk"
+
+    if (
+        "talk" in text
+        or "dialog" in text
+        or "speak" in text
+    ):
+        return "talk"
+
+    if (
+        "idle" in text
+        or "stand" in text
+        or "front" in text
+    ):
+        return "idle"
+
+    return "idle"
+
+
+def load_knight_animations(size):
+    animations = {
+        "idle": [],
+        "walk": [],
+        "talk": []
+    }
+
+    paths = get_image_paths(
+        KNIGHT_DIR
     )
 
     for path in paths:
@@ -147,45 +229,52 @@ def load_knight(size):
                 path
             ).convert_alpha()
 
-            # Cắt phần trong suốt xung quanh nhân vật
-            rect = image.get_bounding_rect()
-
-            if rect.width > 0 and rect.height > 0:
-                image = image.subsurface(
-                    rect
-                ).copy()
-
-            iw, ih = image.get_size()
-
-            if iw <= 0 or ih <= 0:
-                continue
-
-            # Giữ nguyên tỉ lệ
-            scale = min(
-                size[0] / iw,
-                size[1] / ih
+            image = crop_transparent(
+                image
             )
 
-            new_size = (
-                max(
-                    1,
-                    int(iw * scale)
-                ),
-                max(
-                    1,
-                    int(ih * scale)
+            image = scale_keep_ratio(
+                image,
+                size
+            )
+
+            animation_name = (
+                get_animation_name(
+                    path
                 )
             )
 
-            return pygame.transform.smoothscale(
-                image,
-                new_size
+            animations[
+                animation_name
+            ].append(
+                image
             )
 
         except pygame.error:
-            continue
+            pass
 
-    return None
+    if not animations["idle"]:
+        if animations["walk"]:
+            animations["idle"] = [
+                animations["walk"][0]
+            ]
+
+        elif animations["talk"]:
+            animations["idle"] = [
+                animations["talk"][0]
+            ]
+
+    if not animations["walk"]:
+        animations["walk"] = list(
+            animations["idle"]
+        )
+
+    if not animations["talk"]:
+        animations["talk"] = list(
+            animations["idle"]
+        )
+
+    return animations
 
 
 def load_spirit_frames():
@@ -200,13 +289,18 @@ def load_spirit_frames():
         sheet = pygame.image.load(
             SPIRIT_SHEET
         ).convert_alpha()
+
     except pygame.error:
         return result
 
     cw = sheet.get_width() // 3
     ch = sheet.get_height() // 2
 
-    for name, (col, row) in EXPRESSIONS.items():
+    for name, (
+        col,
+        row
+    ) in EXPRESSIONS.items():
+
         frame = sheet.subsurface(
             (
                 col * cw,
@@ -216,12 +310,9 @@ def load_spirit_frames():
             )
         ).copy()
 
-        rect = frame.get_bounding_rect()
-
-        if rect.width > 0 and rect.height > 0:
-            frame = frame.subsurface(
-                rect
-            ).copy()
+        frame = crop_transparent(
+            frame
+        )
 
         result[name] = frame
 
@@ -241,7 +332,6 @@ class ForestScene(Scene):
             self.screen_size
         )
 
-        # Font
         self.font = pygame.font.SysFont(
             "arial",
             20
@@ -264,14 +354,12 @@ class ForestScene(Scene):
             bold=True
         )
 
-        # Font riêng cho tiếng vọng
         self.echo_font = pygame.font.SysFont(
             "georgia",
             31,
             bold=True
         )
 
-        # Background
         self.forest = self._background(
             FOREST
         )
@@ -280,21 +368,37 @@ class ForestScene(Scene):
             HOUSE
         )
 
-        # Nhân vật
-        self.knight = load_knight(
-            (135, 190)
+        # -------------------------
+        # KNIGHT ANIMATION
+        # -------------------------
+
+        self.knight_animations = (
+            load_knight_animations(
+                (150, 205)
+            )
         )
 
-        self.knight_dialog = load_knight(
-            (175, 245)
+        self.knight_animation = "walk"
+        self.knight_frame = 0
+        self.knight_animation_timer = 0.0
+        self.knight_animation_speed = 0.14
+
+        # -------------------------
+        # SPIRIT
+        # -------------------------
+
+        self.spirits = (
+            load_spirit_frames()
         )
 
-        self.spirits = load_spirit_frames()
+        self.game_state = (
+            game.game_state
+        )
 
-        # Game state
-        self.game_state = game.game_state
+        # -------------------------
+        # SCENE
+        # -------------------------
 
-        # Scene state
         self.scene = "approach"
 
         self.timer = 0.0
@@ -310,7 +414,10 @@ class ForestScene(Scene):
 
         self.finished = False
 
-        # Hội thoại trước câu đố
+        # -------------------------
+        # HỘI THOẠI TRƯỚC PUZZLE
+        # -------------------------
+
         self.intro_dialogs = [
             (
                 "Hiệp sĩ",
@@ -344,12 +451,16 @@ class ForestScene(Scene):
             )
         ]
 
-        # Hội thoại sau khi giải câu đố
+        # -------------------------
+        # HỘI THOẠI SAU PUZZLE
+        # -------------------------
+
         self.dialogs = [
             (
                 "Tinh linh",
                 "Ngươi đã khôi phục được bức tranh "
-                "mà khu rừng che giấu. Ta công nhận trí tuệ của ngươi.",
+                "mà khu rừng che giấu. "
+                "Ta công nhận trí tuệ của ngươi.",
                 "happy"
             ),
             (
@@ -421,7 +532,10 @@ class ForestScene(Scene):
             )
         ]
 
-    def _background(self, path):
+    def _background(
+        self,
+        path
+    ):
         if os.path.isfile(path):
             return cover(
                 pygame.image.load(
@@ -471,14 +585,22 @@ class ForestScene(Scene):
         current = ""
 
         for word in text.split():
-            test = (
-                word
-                if not current
-                else current + " " + word
-            )
 
-            if font.size(test)[0] <= width:
+            if current:
+                test = (
+                    current
+                    + " "
+                    + word
+                )
+            else:
+                test = word
+
+            if (
+                font.size(test)[0]
+                <= width
+            ):
                 current = test
+
             else:
                 if current:
                     lines.append(
@@ -494,6 +616,10 @@ class ForestScene(Scene):
 
         return lines
 
+    # -------------------------
+    # HỘI THOẠI GIẤY CỔ
+    # -------------------------
+
     def _dialog(
         self,
         screen,
@@ -506,17 +632,23 @@ class ForestScene(Scene):
         x = 50
         y = self.h - ph - 25
 
-        # Giấy cổ
         panel = pygame.Surface(
-            (pw, ph),
+            (
+                pw,
+                ph
+            ),
             pygame.SRCALPHA
         )
 
         panel.fill(
-            (*PAPER, 248)
+            (
+                PAPER[0],
+                PAPER[1],
+                PAPER[2],
+                248
+            )
         )
 
-        # Viền ngoài
         pygame.draw.rect(
             panel,
             PAPER_BORDER,
@@ -525,7 +657,6 @@ class ForestScene(Scene):
             border_radius=5
         )
 
-        # Viền trong
         pygame.draw.rect(
             panel,
             PAPER_BORDER_LIGHT,
@@ -539,10 +670,13 @@ class ForestScene(Scene):
             border_radius=3
         )
 
-        # Thanh tên
         pygame.draw.rect(
             panel,
-            (225, 210, 181),
+            (
+                225,
+                210,
+                181
+            ),
             (
                 16,
                 13,
@@ -555,20 +689,31 @@ class ForestScene(Scene):
         pygame.draw.line(
             panel,
             PAPER_BORDER_LIGHT,
-            (18, 48),
-            (pw - 18, 48),
+            (
+                18,
+                48
+            ),
+            (
+                pw - 18,
+                48
+            ),
             1
         )
 
-        name_image = self.name_font.render(
-            name,
-            True,
-            INK
+        name_image = (
+            self.name_font.render(
+                name,
+                True,
+                INK
+            )
         )
 
         panel.blit(
             name_image,
-            (28, 19)
+            (
+                28,
+                19
+            )
         )
 
         lines = self._wrap(
@@ -596,7 +741,10 @@ class ForestScene(Scene):
 
         screen.blit(
             panel,
-            (x, y)
+            (
+                x,
+                y
+            )
         )
 
         self._text(
@@ -610,80 +758,170 @@ class ForestScene(Scene):
             )
         )
 
-    def _knight(
+    # -------------------------
+    # KNIGHT ANIMATION
+    # -------------------------
+
+    def _set_knight_animation(
+        self,
+        name
+    ):
+        if (
+            name
+            not in self.knight_animations
+        ):
+            name = "idle"
+
+        if not self.knight_animations[
+            name
+        ]:
+            name = "idle"
+
+        if (
+            self.knight_animation
+            != name
+        ):
+            self.knight_animation = name
+            self.knight_frame = 0
+            self.knight_animation_timer = 0
+
+    def _update_knight_animation(
+        self,
+        dt
+    ):
+        frames = (
+            self.knight_animations.get(
+                self.knight_animation,
+                []
+            )
+        )
+
+        if not frames:
+            return
+
+        if len(frames) == 1:
+            self.knight_frame = 0
+            return
+
+        self.knight_animation_timer += dt
+
+        if (
+            self.knight_animation_timer
+            >= self.knight_animation_speed
+        ):
+            self.knight_animation_timer = 0
+
+            self.knight_frame = (
+                self.knight_frame + 1
+            ) % len(frames)
+
+    def _get_knight_frame(self):
+        frames = (
+            self.knight_animations.get(
+                self.knight_animation,
+                []
+            )
+        )
+
+        if not frames:
+            frames = (
+                self.knight_animations.get(
+                    "idle",
+                    []
+                )
+            )
+
+        if not frames:
+            return None
+
+        index = (
+            self.knight_frame
+            % len(frames)
+        )
+
+        return frames[index]
+
+    def _draw_knight(
         self,
         screen,
         x,
         y,
-        size=None
+        size=None,
+        flip=False
     ):
-        image = self.knight
+        image = (
+            self._get_knight_frame()
+        )
 
-        if size is not None and image is not None:
-            iw, ih = image.get_size()
-
-            scale = min(
-                size[0] / iw,
-                size[1] / ih
-            )
-
-            new_size = (
-                max(
-                    1,
-                    int(iw * scale)
-                ),
-                max(
-                    1,
-                    int(ih * scale)
-                )
-            )
-
-            image = pygame.transform.smoothscale(
-                image,
-                new_size
-            )
-
-        if image is not None:
-            screen.blit(
-                image,
-                (
-                    int(x),
-                    int(y)
-                )
-            )
-
-        else:
+        if image is None:
             pygame.draw.circle(
                 screen,
                 (90, 105, 112),
                 (
-                    int(x + 60),
-                    int(y + 35)
+                    int(x + 50),
+                    int(y + 30)
                 ),
-                27
+                24
             )
 
             pygame.draw.rect(
                 screen,
                 (65, 75, 85),
                 (
-                    int(x + 30),
-                    int(y + 60),
-                    60,
-                    95
+                    int(x + 25),
+                    int(y + 55),
+                    50,
+                    80
                 ),
-                border_radius=10
+                border_radius=8
             )
+
+            return
+
+        if size is not None:
+            image = scale_keep_ratio(
+                image,
+                size
+            )
+
+        if flip:
+            image = pygame.transform.flip(
+                image,
+                True,
+                False
+            )
+
+        screen.blit(
+            image,
+            (
+                int(x),
+                int(y)
+            )
+        )
 
     def _draw_dialog_knight(
         self,
         screen,
         side="left"
     ):
-        if self.knight_dialog is None:
+        self._set_knight_animation(
+            "talk"
+        )
+
+        image = (
+            self._get_knight_frame()
+        )
+
+        if image is None:
             return
 
-        image = self.knight_dialog
+        image = scale_keep_ratio(
+            image,
+            (
+                175,
+                235
+            )
+        )
 
         if side == "left":
             rect = image.get_rect(
@@ -694,6 +932,13 @@ class ForestScene(Scene):
             )
 
         else:
+            # Quay mặt về phía tinh linh
+            image = pygame.transform.flip(
+                image,
+                True,
+                False
+            )
+
             rect = image.get_rect(
                 midbottom=(
                     self.w - 155,
@@ -705,6 +950,10 @@ class ForestScene(Scene):
             image,
             rect
         )
+
+    # -------------------------
+    # SPIRIT
+    # -------------------------
 
     def _spirit(
         self,
@@ -725,14 +974,18 @@ class ForestScene(Scene):
         if image is None:
             pygame.draw.circle(
                 screen,
-                (174, 220, 116),
+                (
+                    174,
+                    220,
+                    116
+                ),
                 center,
                 55
             )
 
             return
 
-        image = pygame.transform.smoothscale(
+        image = scale_keep_ratio(
             image,
             size
         )
@@ -744,7 +997,14 @@ class ForestScene(Scene):
             )
         )
 
-    def _mist(self, screen):
+    # -------------------------
+    # SƯƠNG
+    # -------------------------
+
+    def _mist(
+        self,
+        screen
+    ):
         layer = pygame.Surface(
             self.screen_size,
             pygame.SRCALPHA
@@ -757,7 +1017,9 @@ class ForestScene(Scene):
                     * (20 + i * 4)
                     + i * 160
                 )
-                % (self.w + 280)
+                % (
+                    self.w + 280
+                )
             ) - 140
 
             pygame.draw.ellipse(
@@ -781,7 +1043,14 @@ class ForestScene(Scene):
             (0, 0)
         )
 
-    def _draw_echo(self, screen):
+    # -------------------------
+    # TIẾNG VỌNG
+    # -------------------------
+
+    def _draw_echo(
+        self,
+        screen
+    ):
         shade = pygame.Surface(
             self.screen_size,
             pygame.SRCALPHA
@@ -806,30 +1075,35 @@ class ForestScene(Scene):
             self.h // 2 - 50
         )
 
-        # Sóng nước lan ra
         wave_layer = pygame.Surface(
             self.screen_size,
             pygame.SRCALPHA
         )
 
+        # Sóng lan ra và tan dần
         for i in range(7):
             phase = (
                 self.echo_time * 190
                 - i * 85
             ) % 600
 
-            progress = phase / 600
+            progress = (
+                phase / 600
+            )
 
             rx = int(
-                35 + progress * 500
+                35
+                + progress * 500
             )
 
             ry = int(
-                12 + progress * 150
+                12
+                + progress * 150
             )
 
             alpha = int(
-                150 * (
+                150
+                * (
                     1 - progress
                 )
             )
@@ -837,7 +1111,8 @@ class ForestScene(Scene):
             width = max(
                 1,
                 int(
-                    4 * (
+                    4
+                    * (
                         1 - progress
                     )
                 )
@@ -865,16 +1140,21 @@ class ForestScene(Scene):
             (0, 0)
         )
 
-        # Chữ vọng tan dần
         message = (
             "KẺ XÂM NHẬP TỪ ĐÂU ĐẾN?"
         )
 
-        for i in range(4, 0, -1):
+        # Các lớp chữ vọng
+        for i in range(
+            4,
+            0,
+            -1
+        ):
             delay = i * 0.16
 
             progress = (
-                self.echo_time - delay
+                self.echo_time
+                - delay
             ) % 2.0
 
             progress /= 2.0
@@ -894,26 +1174,30 @@ class ForestScene(Scene):
                 )
             )
 
-            base = self.echo_font.render(
-                message,
-                True,
-                (
-                    205,
-                    235,
-                    210
+            base = (
+                self.echo_font.render(
+                    message,
+                    True,
+                    (
+                        205,
+                        235,
+                        210
+                    )
                 )
             )
 
-            echo = pygame.transform.smoothscale(
-                base,
-                (
-                    int(
-                        base.get_width()
-                        * scale
-                    ),
-                    int(
-                        base.get_height()
-                        * scale
+            echo = (
+                pygame.transform.smoothscale(
+                    base,
+                    (
+                        int(
+                            base.get_width()
+                            * scale
+                        ),
+                        int(
+                            base.get_height()
+                            * scale
+                        )
                     )
                 )
             )
@@ -927,18 +1211,21 @@ class ForestScene(Scene):
                 echo.get_rect(
                     center=(
                         center[0],
-                        center[1] + i * 5
+                        center[1]
+                        + i * 5
                     )
                 )
             )
 
-        main_text = self.echo_font.render(
-            message,
-            True,
-            (
-                240,
-                248,
-                232
+        main_text = (
+            self.echo_font.render(
+                message,
+                True,
+                (
+                    240,
+                    248,
+                    232
+                )
             )
         )
 
@@ -950,7 +1237,8 @@ class ForestScene(Scene):
 
         main_text.set_alpha(
             int(
-                190 + pulse * 65
+                190
+                + pulse * 65
             )
         )
 
@@ -984,195 +1272,53 @@ class ForestScene(Scene):
             )
         )
 
-    def draw_game_state(
-        self,
-        screen
-    ):
-        hp = getattr(
-            self.game_state,
-            "hp",
-            100
-        )
-
-        max_hp = getattr(
-            self.game_state,
-            "max_hp",
-            100
-        )
-
-        blessing = getattr(
-            self.game_state,
-            "forest_blessing",
-            False
-        )
-
-        panel_w = 270
-        panel_h = 82
-
-        panel = pygame.Surface(
-            (
-                panel_w,
-                panel_h
-            ),
-            pygame.SRCALPHA
-        )
-
-        panel.fill(
-            (
-                20,
-                20,
-                20,
-                185
-            )
-        )
-
-        pygame.draw.rect(
-            panel,
-            PAPER_BORDER_LIGHT,
-            panel.get_rect(),
-            2,
-            border_radius=8
-        )
-
-        title_font = pygame.font.SysFont(
-            "arial",
-            17,
-            bold=True
-        )
-
-        text_font = pygame.font.SysFont(
-            "arial",
-            15
-        )
-
-        title = title_font.render(
-            "HIỆP SĨ",
-            True,
-            (
-                245,
-                225,
-                180
-            )
-        )
-
-        panel.blit(
-            title,
-            (12, 8)
-        )
-
-        hp_text = text_font.render(
-            f"HP  {hp}/{max_hp}",
-            True,
-            WHITE
-        )
-
-        panel.blit(
-            hp_text,
-            (12, 31)
-        )
-
-        bar_x = 82
-        bar_y = 34
-        bar_w = 170
-        bar_h = 12
-
-        pygame.draw.rect(
-            panel,
-            (
-                65,
-                65,
-                65
-            ),
-            (
-                bar_x,
-                bar_y,
-                bar_w,
-                bar_h
-            ),
-            border_radius=5
-        )
-
-        hp_ratio = 0
-
-        if max_hp > 0:
-            hp_ratio = max(
-                0,
-                min(
-                    1,
-                    hp / max_hp
-                )
-            )
-
-        pygame.draw.rect(
-            panel,
-            (
-                75,
-                165,
-                85
-            ),
-            (
-                bar_x,
-                bar_y,
-                int(
-                    bar_w * hp_ratio
-                ),
-                bar_h
-            ),
-            border_radius=5
-        )
-
-        if blessing:
-            status = text_font.render(
-                "Trạng thái: Kháng khí độc",
-                True,
-                GOLD
-            )
-        else:
-            status = text_font.render(
-                "Trạng thái: Bình thường",
-                True,
-                WHITE
-            )
-
-        panel.blit(
-            status,
-            (12, 57)
-        )
-
-        screen.blit(
-            panel,
-            (15, 15)
-        )
+    # -------------------------
+    # CHUYỂN CẢNH
+    # -------------------------
 
     def _next(self):
         if self.scene == "approach":
-            # Bắt đầu hội thoại,
-            # chưa được vào câu đố
-            self.scene = "intro_dialog"
+            self.scene = (
+                "intro_dialog"
+            )
+
             self.dialog_index = 0
             self.char_progress = 0
 
-        elif self.scene == "intro_dialog":
-            line = self.intro_dialogs[
-                self.dialog_index
-            ][1]
+            self._set_knight_animation(
+                "talk"
+            )
 
-            # Nếu chữ đang chạy,
-            # bấm lần đầu chỉ hiện hết câu
+        elif (
+            self.scene
+            == "intro_dialog"
+        ):
+            line = (
+                self.intro_dialogs[
+                    self.dialog_index
+                ][1]
+            )
+
             if (
                 self.char_progress
                 < len(line)
             ):
-                self.char_progress = len(line)
+                self.char_progress = (
+                    len(line)
+                )
+
                 return
 
             self.dialog_index += 1
             self.char_progress = 0
 
-            # Sau 2 câu đầu mới có tiếng vọng
             if self.dialog_index == 2:
                 self.scene = "echo"
                 self.echo_time = 0.0
+
+                self._set_knight_animation(
+                    "idle"
+                )
 
             elif (
                 self.dialog_index
@@ -1180,16 +1326,30 @@ class ForestScene(Scene):
                     self.intro_dialogs
                 )
             ):
-                self.scene = "puzzle_intro"
+                self.scene = (
+                    "puzzle_intro"
+                )
+
+                self._set_knight_animation(
+                    "idle"
+                )
 
         elif self.scene == "echo":
-            # Quay lại hội thoại
-            # sau khi hiệu ứng tiếng vọng kết thúc
-            self.scene = "intro_dialog"
+            self.scene = (
+                "intro_dialog"
+            )
+
             self.dialog_index = 2
             self.char_progress = 0
 
-        elif self.scene == "puzzle_intro":
+            self._set_knight_animation(
+                "talk"
+            )
+
+        elif (
+            self.scene
+            == "puzzle_intro"
+        ):
             self.puzzle = TangramGame(
                 self.game.screen,
                 HOUSE,
@@ -1198,23 +1358,37 @@ class ForestScene(Scene):
             )
 
             self.puzzle_done_time = 0.0
+
             self.scene = "puzzle"
 
-        elif self.scene == "spirit_reveal":
+        elif (
+            self.scene
+            == "spirit_reveal"
+        ):
             self.scene = "dialog"
+
             self.dialog_index = 0
             self.char_progress = 0
 
+            self._set_knight_animation(
+                "talk"
+            )
+
         elif self.scene == "dialog":
-            line = self.dialogs[
-                self.dialog_index
-            ][1]
+            line = (
+                self.dialogs[
+                    self.dialog_index
+                ][1]
+            )
 
             if (
                 self.char_progress
                 < len(line)
             ):
-                self.char_progress = len(line)
+                self.char_progress = (
+                    len(line)
+                )
+
                 return
 
             self.dialog_index += 1
@@ -1222,13 +1396,29 @@ class ForestScene(Scene):
 
             if (
                 self.dialog_index
-                >= len(self.dialogs)
+                >= len(
+                    self.dialogs
+                )
             ):
-                self.game_state.forest_blessing = True
+                # Vẫn lưu chúc phúc để map sau sử dụng
+                if hasattr(
+                    self,
+                    "game_state"
+                ):
+                    self.game_state.forest_blessing = True
+
                 self.scene = "ending"
+
+                self._set_knight_animation(
+                    "idle"
+                )
 
         elif self.scene == "ending":
             self.finished = True
+
+    # -------------------------
+    # EVENT
+    # -------------------------
 
     def handle_event(
         self,
@@ -1244,8 +1434,10 @@ class ForestScene(Scene):
 
         if (
             (
-                event.type == pygame.KEYDOWN
-                and event.key in (
+                event.type
+                == pygame.KEYDOWN
+                and event.key
+                in (
                     pygame.K_RETURN,
                     pygame.K_SPACE
                 )
@@ -1259,26 +1451,52 @@ class ForestScene(Scene):
         ):
             self._next()
 
+    # -------------------------
+    # UPDATE
+    # -------------------------
+
     def update(
         self,
         dt
     ):
         self.timer += dt
 
+        self._update_knight_animation(
+            dt
+        )
+
         if self.scene == "approach":
+            self._set_knight_animation(
+                "walk"
+            )
+
             self.knight_x = min(
                 120,
                 self.knight_x
                 + 90 * dt
             )
 
+            if self.knight_x >= 120:
+                self._set_knight_animation(
+                    "idle"
+                )
+
         elif self.scene == "echo":
             self.echo_time += dt
 
-        elif self.scene == "intro_dialog":
-            line = self.intro_dialogs[
-                self.dialog_index
-            ][1]
+        elif (
+            self.scene
+            == "intro_dialog"
+        ):
+            self._set_knight_animation(
+                "talk"
+            )
+
+            line = (
+                self.intro_dialogs[
+                    self.dialog_index
+                ][1]
+            )
 
             self.char_progress = min(
                 len(line),
@@ -1306,9 +1524,15 @@ class ForestScene(Scene):
                     self.timer = 0.0
 
         elif self.scene == "dialog":
-            line = self.dialogs[
-                self.dialog_index
-            ][1]
+            self._set_knight_animation(
+                "talk"
+            )
+
+            line = (
+                self.dialogs[
+                    self.dialog_index
+                ][1]
+            )
 
             self.char_progress = min(
                 len(line),
@@ -1316,19 +1540,29 @@ class ForestScene(Scene):
                 + dt * 35
             )
 
+        elif self.scene == "ending":
+            self._set_knight_animation(
+                "idle"
+            )
+
+    # -------------------------
+    # DRAW
+    # -------------------------
+
     def draw(
         self,
         screen
     ):
-        # Puzzle tự vẽ toàn màn hình
+        # -------------------------
+        # PUZZLE
+        # -------------------------
+
         if (
             self.scene == "puzzle"
             and self.puzzle
         ):
             self.puzzle.draw()
-            self.draw_game_state(
-                screen
-            )
+
             return
 
         screen.blit(
@@ -1339,15 +1573,20 @@ class ForestScene(Scene):
         # -------------------------
         # ĐI VÀO RỪNG
         # -------------------------
+
         if self.scene == "approach":
-            ghost = self.house_bg.copy()
+            ghost = (
+                self.house_bg.copy()
+            )
 
             ghost.set_alpha(
                 int(
                     25
-                    + 150 * (
+                    + 150
+                    * (
                         0.5
-                        + 0.5 * math.sin(
+                        + 0.5
+                        * math.sin(
                             self.timer * 2
                         )
                     )
@@ -1363,10 +1602,14 @@ class ForestScene(Scene):
                 screen
             )
 
-            self._knight(
+            self._draw_knight(
                 screen,
                 self.knight_x,
-                self.h - 245
+                self.h - 245,
+                (
+                    145,
+                    200
+                )
             )
 
             self._text(
@@ -1390,7 +1633,11 @@ class ForestScene(Scene):
         # -------------------------
         # HỘI THOẠI MỞ ĐẦU
         # -------------------------
-        elif self.scene == "intro_dialog":
+
+        elif (
+            self.scene
+            == "intro_dialog"
+        ):
             self._mist(
                 screen
             )
@@ -1419,15 +1666,20 @@ class ForestScene(Scene):
         # -------------------------
         # TIẾNG VỌNG
         # -------------------------
+
         elif self.scene == "echo":
             self._draw_echo(
                 screen
             )
 
         # -------------------------
-        # GIỚI THIỆU CÂU ĐỐ
+        # GIỚI THIỆU PUZZLE
         # -------------------------
-        elif self.scene == "puzzle_intro":
+
+        elif (
+            self.scene
+            == "puzzle_intro"
+        ):
             shade = pygame.Surface(
                 self.screen_size,
                 pygame.SRCALPHA
@@ -1508,7 +1760,11 @@ class ForestScene(Scene):
         # -------------------------
         # TINH LINH XUẤT HIỆN
         # -------------------------
-        elif self.scene == "spirit_reveal":
+
+        elif (
+            self.scene
+            == "spirit_reveal"
+        ):
             glow = pygame.Surface(
                 self.screen_size,
                 pygame.SRCALPHA
@@ -1580,7 +1836,11 @@ class ForestScene(Scene):
             self._spirit(
                 screen,
                 "surprised",
-                center
+                center,
+                (
+                    230,
+                    265
+                )
             )
 
             self._text(
@@ -1606,8 +1866,9 @@ class ForestScene(Scene):
             )
 
         # -------------------------
-        # HỘI THOẠI VỚI TINH LINH
+        # HỘI THOẠI TINH LINH
         # -------------------------
+
         elif self.scene == "dialog":
             shade = pygame.Surface(
                 self.screen_size,
@@ -1628,11 +1889,13 @@ class ForestScene(Scene):
                 (0, 0)
             )
 
-            speaker, text, expression = (
-                self.dialogs[
-                    self.dialog_index
-                ]
-            )
+            (
+                speaker,
+                text,
+                expression
+            ) = self.dialogs[
+                self.dialog_index
+            ]
 
             # Tinh linh bên trái
             self._spirit(
@@ -1642,22 +1905,17 @@ class ForestScene(Scene):
                     self.w // 2 - 250,
                     self.h // 2 - 80
                 ),
-                (205, 235)
+                (
+                    205,
+                    235
+                )
             )
 
             # Hiệp sĩ bên phải
-            if self.knight_dialog is not None:
-                rect = self.knight_dialog.get_rect(
-                    midbottom=(
-                        self.w - 155,
-                        self.h - 175
-                    )
-                )
-
-                screen.blit(
-                    self.knight_dialog,
-                    rect
-                )
+            self._draw_dialog_knight(
+                screen,
+                "right"
+            )
 
             self._dialog(
                 screen,
@@ -1672,6 +1930,7 @@ class ForestScene(Scene):
         # -------------------------
         # KẾT THÚC
         # -------------------------
+
         elif self.scene == "ending":
             shade = pygame.Surface(
                 self.screen_size,
@@ -1692,8 +1951,20 @@ class ForestScene(Scene):
                 (0, 0)
             )
 
-            if self.knight_dialog is not None:
-                rect = self.knight_dialog.get_rect(
+            image = (
+                self._get_knight_frame()
+            )
+
+            if image is not None:
+                image = scale_keep_ratio(
+                    image,
+                    (
+                        160,
+                        220
+                    )
+                )
+
+                rect = image.get_rect(
                     midbottom=(
                         self.w // 2,
                         self.h - 170
@@ -1701,7 +1972,7 @@ class ForestScene(Scene):
                 )
 
                 screen.blit(
-                    self.knight_dialog,
+                    image,
                     rect
                 )
 
@@ -1738,20 +2009,34 @@ class ForestScene(Scene):
                 )
             )
 
-        # Game stat luôn hiện
-        self.draw_game_state(
-            screen
-        )
+            self._text(
+                screen,
+                "ENTER / SPACE / click để tiếp tục",
+                self.small,
+                WHITE,
+                (
+                    self.w // 2,
+                    self.h - 40
+                )
+            )
 
-    def is_finished(self):
+    def is_finished(
+        self
+    ):
         return self.finished
 
-    def get_next_scene(self):
+    def get_next_scene(
+        self
+    ):
         if self.finished:
             return "swamp"
 
         return None
 
 
-def create_forest_scene(game):
-    return ForestScene(game)
+def create_forest_scene(
+    game
+):
+    return ForestScene(
+        game
+    )
