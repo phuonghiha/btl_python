@@ -5,6 +5,7 @@ import random
 
 import pygame
 
+from base_scene import draw_dialogue_frame
 
 FINAL_PLAYER_SIZE = (160, 218)
 FINAL_FROG_SIZE = (180, 180)
@@ -42,6 +43,15 @@ class SwampPuzzle:
         self._damage_applied = False
         self._knockback = None
         self._victory_retreat = None
+        self._sword_flight = None
+        self._sword_awarded = False
+        sword_path = os.path.join(PROJECT_DIR, "assets", "images", "Sword.png")
+        self._sword_image = pygame.image.load(sword_path).convert_alpha()
+        self._sword_image = pygame.transform.smoothscale(self._sword_image, (128, 128))
+        self._sword_glow = pygame.Surface((156, 156), pygame.SRCALPHA)
+        pygame.draw.circle(
+            self._sword_glow, (255, 224, 118, 72), (78, 78), 60
+        )
         self._quit = False
         self._reunion_pending = False
         self._current_number = 0
@@ -62,6 +72,10 @@ class SwampPuzzle:
     @property
     def reunion_pending(self):
         return self._reunion_pending
+
+    @property
+    def sword_awarded(self):
+        return self._sword_awarded
 
     def show_reunion(self):
         """Show the frog's greeting after the player returns from the map."""
@@ -232,6 +246,8 @@ class SwampPuzzle:
         self._animation_timer = 0.0
         self._knockback = None
         self._victory_retreat = None
+        self._sword_flight = None
+        self._sword_awarded = False
         self._quit = False
         self._reunion_pending = False
 
@@ -262,7 +278,7 @@ class SwampPuzzle:
         player to move exactly when the remaining distance is divisible by
         M + 1. Otherwise, leave that multiple for the knight. In a losing
         position every legal move gives the opponent a winning position, so
-        take one number as a simple legal fallback.
+        choose randomly when no winning move is available.
         """
         remaining = self._target_number - self._current_number
         max_numbers = min(self._max_numbers_per_turn, remaining)
@@ -272,7 +288,7 @@ class SwampPuzzle:
         winning_count = remaining % (self._max_numbers_per_turn + 1)
         if 1 <= winning_count <= max_numbers:
             return winning_count
-        return 1
+        return random.randint(1, max_numbers)
 
     def handle_event(self, position):
         if self._stage in ("opening_frog", "opening_knight"):
@@ -425,6 +441,20 @@ class SwampPuzzle:
             )
             if progress >= 1.0:
                 self._victory_retreat = None
+                self._stage = "sword_flight"
+                self._sword_flight = {
+                    "start": (self.frog.x + FINAL_FROG_SIZE[0] // 2,
+                              self.frog.y + FINAL_FROG_SIZE[1] // 2),
+                    "target": (self.player.x + FINAL_PLAYER_SIZE[0] // 2,
+                               self.player.y + FINAL_PLAYER_SIZE[1] // 2),
+                    "elapsed": 0.0,
+                    "duration": 1.6,
+                }
+        elif self._stage == "sword_flight":
+            self._sword_flight["elapsed"] += dt
+            if self._sword_flight["elapsed"] >= self._sword_flight["duration"]:
+                self._sword_flight = None
+                self._sword_awarded = True
                 self._stage = "victory"
                 self._speaker = "frog"
 
@@ -454,6 +484,18 @@ class SwampPuzzle:
             self._draw_button(screen, second, "ĐI SAU")
         elif stage in ("knight_victory_attack", "frog_retreat"):
             return
+        elif stage == "sword_flight":
+            motion = self._sword_flight
+            progress = min(motion["elapsed"] / motion["duration"], 1.0)
+            x = motion["start"][0] + (motion["target"][0] - motion["start"][0]) * progress
+            y = motion["start"][1] + (motion["target"][1] - motion["start"][1]) * progress
+            screen.blit(
+                self._sword_glow,
+                self._sword_glow.get_rect(center=(round(x), round(y))),
+            )
+            sword = pygame.transform.rotate(self._sword_image, -35)
+            screen.blit(sword, sword.get_rect(center=(round(x), round(y))))
+            return
         elif stage in ("knight_turn", "frog_turn", "frog_speaking"):
             self._draw_counting_game(screen)
             if stage == "frog_speaking":
@@ -466,9 +508,7 @@ class SwampPuzzle:
         veil.fill((0, 0, 0, 145))
         screen.blit(veil, (0, 0))
         panel, button = self._rules_layout()
-        pygame.draw.rect(screen, (28, 20, 13), panel.move(0, 6), border_radius=16)
-        pygame.draw.rect(screen, PAPER, panel, border_radius=16)
-        pygame.draw.rect(screen, BORDER, panel, 4, border_radius=16)
+        draw_dialogue_frame(screen, panel)
         title = self.dialogue_name_font.render("LUẬT ĐẤU", True, (52, 39, 27))
         screen.blit(title, title.get_rect(midtop=(panel.centerx, panel.y + 24)))
         rules = (
@@ -485,8 +525,6 @@ class SwampPuzzle:
 
     def _draw_bubble(self, screen):
         rect, lines, buttons, speaker_rect = self._bubble_layout()
-        pygame.draw.rect(screen, (20, 16, 12), rect.move(0, 5), border_radius=14)
-
         if self._speaker == "knight":
             tail = [
                 (rect.right - 3, rect.centery - 13),
@@ -501,8 +539,7 @@ class SwampPuzzle:
             ]
         pygame.draw.polygon(screen, BORDER, tail)
         pygame.draw.polygon(screen, PAPER, tail)
-        pygame.draw.rect(screen, PAPER, rect, border_radius=14)
-        pygame.draw.rect(screen, BORDER, rect, 3, border_radius=14)
+        draw_dialogue_frame(screen, rect)
 
         name, color = (
             ("CHƯA LẤY ĐƯỢC THÁNH KIẾM", BORDER)
@@ -540,9 +577,7 @@ class SwampPuzzle:
 
     def _draw_counting_game(self, screen):
         panel = pygame.Rect(screen.get_width() // 2 - 285, 486, 570, 172)
-        pygame.draw.rect(screen, (25, 20, 15), panel.move(0, 5), border_radius=14)
-        pygame.draw.rect(screen, PAPER, panel, border_radius=14)
-        pygame.draw.rect(screen, BORDER, panel, 3, border_radius=14)
+        draw_dialogue_frame(screen, panel)
         number = self.dialogue_name_font.render(
             f"ĐANG ĐẾM: {self._current_number} / {self._target_number}", True, (52, 39, 27)
         )
@@ -555,7 +590,7 @@ class SwampPuzzle:
             screen.blit(last_text, last_text.get_rect(center=(panel.centerx, panel.y + 75)))
         if self._stage == "knight_turn":
             for count, button in enumerate(self._count_button_rects(), start=1):
-                self._draw_button(screen, button, f"ĐỌC {count} SỐ", count == 1)
+                self._draw_button(screen, button, f"ĐỌC {count} SỐ")
         elif self._stage == "frog_turn":
             waiting = self.dialogue_font.render("Ếch đang cân nhắc nước đi...", True, FROG_TEXT)
             screen.blit(waiting, waiting.get_rect(center=(panel.centerx, panel.bottom - 31)))

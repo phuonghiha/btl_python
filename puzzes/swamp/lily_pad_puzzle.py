@@ -5,7 +5,7 @@ import math
 import random
 
 MAX_JUMP_DISTANCE = 240
-FAR_BANK_TARGET = (1050, 230)
+FAR_BANK_TARGET = (1030, 215)
 
 
 @dataclass(frozen=True)
@@ -32,33 +32,33 @@ class LilyPadPuzzle:
     # Mỗi dòng là (x, y, kích thước): bạn có thể chỉnh trực tiếp tại đây.
     # Screen pixels for a 1280x720 window; tuples are (x, y, size), in step order.
     _ROUTE_LAYOUT = (
-        (600, 390, 86),  # Bước 1
-        (533, 286, 72),  # Bước 2
-        (681, 330, 92),  # Bước 3
-        (830, 390, 78),  # Bước 4
-        (826, 522, 88),  # Bước 5
-        (960, 552, 76),  # Bước 6
-        (1015, 436, 94), # Bước 7
-        (1146, 386, 82), # Bước 8
-        (1060, 270, 82), # Bước 9, sát bờ bên kia
+        (518, 401, 86),
+        (448, 295, 72),
+        (603, 339, 92),
+        (760, 401, 78),
+        (755, 535, 88),
+        (896, 566, 76),
+        (954, 448, 94),
+        (1091, 397, 82),
+        (1001, 278, 82),
     )
 
     # Lá sai: (x, y, kích thước), cũng dùng pixel màn hình.
     # Decoy pads: (x, y, size), also in screen pixels.
     _DECOY_LAYOUT = (
-        (206, 325, 70),
-        (367, 259, 82),
-        (498, 186, 72),
-        (648, 233, 68),
-        (655, 163, 62),
-        (790, 277, 90),
-        (901, 268, 74),
-        (962, 327, 62),
-        (442, 386, 88),
-        (713, 452, 76),
-        (642, 528, 92),
-        (1182, 535, 72),
-        (853, 649, 86),
+        (104, 334, 70),
+        (273, 267, 82),
+        (411, 193, 72),
+        (568, 240, 68),
+        (576, 169, 62),
+        (718, 285, 90),
+        (834, 276, 74),
+        (898, 336, 62),
+        (352, 397, 88),
+        (637, 464, 76),
+        (562, 541, 92),
+        (1129, 548, 72),
+        (784, 665, 86),
     )
 
     def __init__(self, rng=None):
@@ -176,6 +176,14 @@ class LilyPadPuzzle:
         pad = next((pad for pad in self.pads if pad.pad_id == pad_id), None)
         if pad is not None and pad.route_index is None:
             self.pads.remove(pad)
+            return pad
+        return None
+
+    def restore_decoy(self, pad):
+        """Bring a failed decoy back after the player returns to shore."""
+        if pad is not None and pad.route_index is None:
+            if not any(existing.pad_id == pad.pad_id for existing in self.pads):
+                self.pads.append(pad)
 
     def select(self, pad_id, player_position):
         """Validate a nearby jump and update the player's current pad.
