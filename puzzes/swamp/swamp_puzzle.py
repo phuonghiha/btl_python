@@ -5,6 +5,7 @@ import random
 
 import pygame
 
+from game_fonts import content1, title
 from base_scene import draw_dialogue_frame
 
 FINAL_PLAYER_SIZE = (160, 218)
@@ -33,9 +34,9 @@ class SwampPuzzle:
         self.game_state = game_state
         self.screen = screen
 
-        self.dialogue_name_font = pygame.font.Font(TITLE_FONT_PATH, 23)
-        self.dialogue_font = pygame.font.Font(CONTENT_FONT_PATH, 20)
-        self.dialogue_button_font = pygame.font.Font(CONTENT_FONT_PATH, 17)
+        self.dialogue_name_font = title(23)
+        self.dialogue_font = content1(20)
+        self.dialogue_button_font = content1(17)
 
         self._stage = None
         self._speaker = "frog"
@@ -267,7 +268,7 @@ class SwampPuzzle:
         last_number = min(self._target_number, self._current_number + count)
         self._last_call = list(range(self._current_number + 1, last_number + 1))
         self._current_number = last_number
-        self._last_caller = "ẾCH" if speaker == "frog" else "HIỆP SĨ"
+        self._last_caller = "Ếch" if speaker == "frog" else "Hiệp sĩ"
         if speaker == "frog":
             self._frog_call_text = "Ếch cất tiếng: " + ", ".join(map(str, self._last_call))
 
@@ -509,7 +510,7 @@ class SwampPuzzle:
         screen.blit(veil, (0, 0))
         panel, button = self._rules_layout()
         draw_dialogue_frame(screen, panel)
-        title = self.dialogue_name_font.render("LUẬT ĐẤU", True, (52, 39, 27))
+        title = self.dialogue_name_font.render("Luật đấu", True, (52, 39, 27))
         screen.blit(title, title.get_rect(midtop=(panel.centerx, panel.y + 24)))
         rules = (
             f"Ván này đếm đến {self._target_number}. Mỗi lượt, mỗi bên được đọc tối đa {self._max_numbers_per_turn} số liên tiếp. "
@@ -542,15 +543,15 @@ class SwampPuzzle:
         draw_dialogue_frame(screen, rect)
 
         name, color = (
-            ("CHƯA LẤY ĐƯỢC THÁNH KIẾM", BORDER)
+            ("Chưa lấy được Thánh Kiếm", BORDER)
             if self._stage == "abandon_notice"
             else
-            ("HIỆP SĨ", KNIGHT_TEXT)
+            ("Hiệp sĩ", KNIGHT_TEXT)
             if self._speaker == "knight"
-            else ("ẾCH", FROG_TEXT)
+            else ("Ếch", FROG_TEXT)
         )
         name_font = (
-            pygame.font.Font(TITLE_FONT_PATH, 18)
+            title(18)
             if self._stage == "abandon_notice"
             else self.dialogue_name_font
         )
@@ -579,7 +580,7 @@ class SwampPuzzle:
         panel = pygame.Rect(screen.get_width() // 2 - 285, 486, 570, 172)
         draw_dialogue_frame(screen, panel)
         number = self.dialogue_name_font.render(
-            f"ĐANG ĐẾM: {self._current_number} / {self._target_number}", True, (52, 39, 27)
+            f"Đang đếm: {self._current_number} / {self._target_number}", True, (52, 39, 27)
         )
         screen.blit(number, number.get_rect(center=(panel.centerx, panel.y + 34)))
         if self._last_call:

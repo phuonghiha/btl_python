@@ -1,4 +1,5 @@
 import pygame
+from game_fonts import content1
 import random
 import math
 import os
@@ -196,8 +197,8 @@ class TangramGame:
         self.BOARD_X = (self.WIDTH - self.BOARD_SIZE) // 2
         self.BOARD_Y = (self.HEIGHT - self.BOARD_SIZE) // 2
 
-        self.font = pygame.font.Font(None, 46)
-        self.small_font = pygame.font.Font(None, 32)
+        self.font = content1(46)
+        self.small_font = content1(32)
 
         if image_path is None:
             root = os.path.dirname(

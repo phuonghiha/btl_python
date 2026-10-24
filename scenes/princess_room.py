@@ -5,9 +5,10 @@ import os
 
 import pygame
 
+from game_fonts import content1, title
 from animation.animation_manager import AnimationManager
 from characters.knight import Knight
-from base_scene import BaseScene, draw_dialogue_frame
+from base_scene import BaseScene, STANDARD_DIALOG_RECT, draw_dialogue_frame
 from settings import SCREEN_HEIGHT, SCREEN_WIDTH
 
 
@@ -100,9 +101,9 @@ class PrincessRoomScene(BaseScene):
         self.notice = ""
         self.notice_time = 0.0
         self.mouse_pos = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-        self.font = pygame.font.SysFont("arial", 23)
-        self.small = pygame.font.SysFont("arial", 18)
-        self.title_font = pygame.font.SysFont("arial", 36, bold=True)
+        self.font = content1(23)
+        self.small = content1(18)
+        self.title_font = title(36)
         self.items = {
             "pink_yarn": "Cuộn len hồng",
             "magnifying_glass": "Kính lúp",
@@ -617,24 +618,26 @@ class PrincessRoomScene(BaseScene):
         pygame.draw.circle(screen, (191, 143, 63), self.lens_rect.center, self.lens_radius, 7)
 
     def _draw_dialog(self, screen):
-        box = pygame.Rect(72, 520, SCREEN_WIDTH - 144, 160)
+        box = STANDARD_DIALOG_RECT
         draw_dialogue_frame(screen, box)
         self._text(screen, self.dialogue[0], self.font, (112, 65, 34), (box.x + 27, box.y + 18))
         page = self.dialog_pages[self.dialog_page:self.dialog_page + 3]
         remaining = int(self.type_progress)
-        y = box.y + 58
+        y = box.y + 50
         for line in page:
             shown = line[:remaining]
             remaining -= len(shown)
             self._text(screen, shown, self.font, (55, 42, 31), (box.x + 28, y))
-            y += 31
-        self._text(screen, "Click", self.small, (112, 75, 42), (box.right - 245, box.bottom - 28))
+            y += 25
+        self._text(screen, "Click", self.small, (112, 75, 42), (box.right - 50, box.y + 30), True)
 
     def _draw_cat_dialog(self, screen):
         box = pygame.Rect(0, 0, 260, 106)
         box.bottom = self.cat_hitbox.top - 12
         box.left = self.cat_hitbox.centerx + 35
         box.clamp_ip(pygame.Rect(12, 12, SCREEN_WIDTH - 24, SCREEN_HEIGHT - 24))
+        if box.colliderect(self.restart_button_rect):
+            box.right = self.restart_button_rect.left - 12
         draw_dialogue_frame(screen, box)
         self._text(screen, self.dialogue[0], self.small, (112, 65, 34), (box.x + 16, box.y + 12))
         page = self.dialog_pages[self.dialog_page:self.dialog_page + 3]
@@ -653,7 +656,7 @@ class PrincessRoomScene(BaseScene):
         draw_dialogue_frame(screen, box)
         self.close_rect = pygame.Rect(box.right - 48, box.y + 12, 34, 34)
         self.submit_rect = pygame.Rect(box.centerx - 88, box.y + 300, 176, 48)
-        self._text(screen, "RƯƠNG BÁU", self.title_font, (89, 55, 30), (box.centerx, box.y + 46), True)
+        self._text(screen, "Rương báu", self.title_font, (89, 55, 30), (box.centerx, box.y + 46), True)
         for i, text in enumerate(("2 + 3 = 10", "4 + 5 = 36", "6 + 7 = 78", "8 + 9 = ?")):
             self._text(screen, text, self.font, (56, 44, 32), (box.centerx, box.y + 100 + i * 37), True)
         self.puzzle_input_rect = pygame.Rect(box.centerx - 80, box.y + 255, 160, 40)
@@ -676,7 +679,7 @@ class PrincessRoomScene(BaseScene):
             screen.blit(self.letter_panel_image, box)
         else:
             self._panel(screen, box, paper=True)
-        self._text(screen, "LÁ THƯ BÍ ẨN", self.title_font, (97, 57, 31), (box.centerx, box.y + 70), True)
+        self._text(screen, "Lá thư bí ẩn", self.title_font, (97, 57, 31), (box.centerx, box.y + 70), True)
         self._text(screen, "Thứ đỏ rực đang ngủ dưới ánh trăng.", self.font, (64, 45, 32), (box.centerx, box.y + 180), True)
         self._button(screen, pygame.Rect(box.centerx - 80, box.bottom - 75, 160, 46), "ĐÓNG THƯ")
 

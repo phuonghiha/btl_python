@@ -1,4 +1,4 @@
-"""Scene controller for the poisonous swamp and its lily-pad puzzle."""
+﻿"""Scene controller for the poisonous swamp and its lily-pad puzzle."""
 
 import glob
 import math
@@ -6,6 +6,7 @@ import os
 
 import pygame
 
+from game_fonts import content1
 from characters.frog import Frog
 from player import Player
 from puzzes.swamp import MAX_JUMP_DISTANCE, LilyPadPuzzle
@@ -131,8 +132,8 @@ class SwampScene(BaseScene):
         )
         self._sword_inventory_synced = False
 
-        self.font = pygame.font.Font(TITLE_FONT_PATH, 24)
-        self.small_font = pygame.font.Font(CONTENT_FONT_PATH, 18)
+        self.font = content1(24)
+        self.small_font = content1(18)
         self._jump = None
         self._wrong_sink = None
         self._wrong_pad_landing = None
@@ -490,7 +491,7 @@ class SwampScene(BaseScene):
 
     def _draw_interface(self, screen):
         if self.message:
-            max_text_width = screen.get_width() - 88
+            max_text_width = screen.get_width() - 184
             words = self.message.split()
             lines = []
             current = ""
@@ -507,7 +508,7 @@ class SwampScene(BaseScene):
                 self.small_font.render(line, True, HINT_INK) for line in lines
             ]
             hint_width = min(
-                screen.get_width() - 48,
+                screen.get_width() - 160,
                 max((line.get_width() for line in rendered_lines), default=0) + 40,
             )
             hint_height = max(54, len(rendered_lines) * 24 + 20)

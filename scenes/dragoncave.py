@@ -1,6 +1,7 @@
 """Dragon cave scene with the shared gameplay HUD and inventory."""
 
 import pygame
+from game_fonts import content1, title
 
 from base_scene import BaseScene
 from settings import PARCHMENT, SCREEN_WIDTH, DARK_BROWN
@@ -11,8 +12,8 @@ class DragonCaveScene(BaseScene):
 
     def __init__(self, game):
         super().__init__(game)
-        self.title_font = pygame.font.SysFont("arial", 34, bold=True)
-        self.message_font = pygame.font.SysFont("arial", 23)
+        self.title_font = title(34)
+        self.message_font = content1(23)
 
     def draw(self, screen):
         screen.fill(PARCHMENT)

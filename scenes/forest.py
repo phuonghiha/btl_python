@@ -2,7 +2,8 @@ import math
 import os
 import pygame
 
-from base_scene import BaseScene
+from base_scene import BaseScene, STANDARD_DIALOG_RECT
+from game_fonts import content1, title
 from settings import GOLD, WHITE
 from puzzes.forest.for_puz import TangramGame
 
@@ -190,11 +191,11 @@ class ForestScene(BaseScene):
         self.screen_size = game.screen.get_size()
         self.w, self.h = self.screen_size
 
-        self.font = pygame.font.SysFont("arial", 20)
-        self.small = pygame.font.SysFont("arial", 14)
-        self.heading = pygame.font.SysFont("arial", 30, bold=True)
-        self.name_font = pygame.font.SysFont("arial", 19, bold=True)
-        self.echo_font = pygame.font.SysFont("georgia", 31, bold=True)
+        self.font = content1(20)
+        self.small = content1(14)
+        self.heading = title(30)
+        self.name_font = title(19)
+        self.echo_font = title(31)
 
         self.forest = self._background(FOREST)
         self.house_bg = self._background(HOUSE)
@@ -445,10 +446,9 @@ class ForestScene(BaseScene):
         return lines
 
     def _dialog(self, screen, name, text):
-        pw = self.w - 100
-        ph = 155
-        x = 50
-        y = self.h - ph - 25
+        rect = STANDARD_DIALOG_RECT
+        pw, ph = rect.size
+        x, y = rect.topleft
 
         panel = pygame.Surface((pw, ph), pygame.SRCALPHA)
         panel.fill((*PAPER, 250))
@@ -482,7 +482,7 @@ class ForestScene(BaseScene):
 
         for i, line in enumerate(lines[:3]):
             image = self.font.render(line, True, INK)
-            panel.blit(image, (28, 58 + i * 27))
+            panel.blit(image, (28, 50 + i * 25))
 
         screen.blit(panel, (x, y))
 
@@ -491,7 +491,7 @@ class ForestScene(BaseScene):
             "ENTER / SPACE / click để tiếp tục",
             self.small,
             INK_LIGHT,
-            (self.w - 180, self.h - 12),
+            (rect.right - 80, rect.y + 30),
         )
 
     # =====================================================
@@ -618,7 +618,7 @@ class ForestScene(BaseScene):
 
         screen.blit(wave_layer, (0, 0))
 
-        message = "KẺ XÂM NHẬP TỪ ĐÂU ĐẾN?"
+        message = "Kẻ xâm nhập từ đâu đến?"
 
         for i in range(4, 0, -1):
             delay = i * 0.16
@@ -731,11 +731,11 @@ class ForestScene(BaseScene):
 
         if kind == "scale":
             image = self.scale_image
-            title = "VẢY RỒNG"
+            title = "Vảy rồng"
             subtitle = "Dấu vết dẫn đến hang rồng"
         else:
             image = self.gem_image
-            title = "ĐÁ CHÚC PHÚC TINH LINH"
+            title = "Đá chúc phúc tinh linh"
             subtitle = "Đã nhận bảo hộ kháng khí độc"
 
         if image is not None:
@@ -984,14 +984,6 @@ class ForestScene(BaseScene):
                 self.h - 245,
             )
 
-            self._text(
-                screen,
-                "RỪNG TINH LINH",
-                self.heading,
-                GOLD,
-                (self.w // 2, 42),
-            )
-
             self._dialog(
                 screen,
                 "Hiệp sĩ",
@@ -1022,7 +1014,7 @@ class ForestScene(BaseScene):
 
             self._text(
                 screen,
-                "KÝ ỨC BỊ ĐÁNH RƠI",
+                "Ký ức bị đánh rơi",
                 self.heading,
                 GOLD,
                 (self.w // 2, 90),
@@ -1148,7 +1140,7 @@ class ForestScene(BaseScene):
 
             self._text(
                 screen,
-                "ĐÁ CHÚC PHÚC TINH LINH",
+                "Đá chúc phúc tinh linh",
                 self.heading,
                 GOLD,
                 (self.w // 2, 80),
@@ -1164,7 +1156,7 @@ class ForestScene(BaseScene):
 
             self._text(
                 screen,
-                "Điểm đến tiếp theo: ĐẦM LẦY ĐỘC",
+                "Điểm đến tiếp theo: Đầm lầy độc",
                 self.font,
                 GOLD,
                 (self.w // 2, self.h - 90),
@@ -1181,6 +1173,10 @@ class ForestScene(BaseScene):
 
     def is_finished(self):
         return self.finished
+
+    def reset(self):
+        """Recreate forest progress when starting a fresh playthrough."""
+        self.__init__(self.game)
 
     def get_next_scene(self):
         if self.finished:

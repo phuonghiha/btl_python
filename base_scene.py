@@ -11,6 +11,7 @@ import os
 
 import pygame
 
+from game_fonts import content1, title
 from scene import Scene
 from settings import DARK_BROWN, GOLD, RED, SCREEN_HEIGHT, SCREEN_WIDTH, WHITE
 
@@ -25,6 +26,9 @@ INVENTORY_GAP_Y = 8
 DIALOGUE_PAPER = (240, 222, 181)
 DIALOGUE_BORDER = (104, 69, 43)
 DIALOGUE_INNER_BORDER = (157, 119, 72)
+STANDARD_DIALOG_RECT = pygame.Rect(
+    32, SCREEN_HEIGHT - 150, 900, 135
+)
 
 
 def draw_dialogue_frame(screen, rect):
@@ -80,15 +84,21 @@ class BaseScene(Scene):
             self.map_button_rect.width,
             self.map_button_rect.height,
         )
+        self.restart_button_rect = pygame.Rect(
+            SCREEN_WIDTH - 112,
+            SCREEN_HEIGHT - 58,
+            92,
+            42,
+        )
         self.inventory_panel_rect = pygame.Rect(
             160, 66, SCREEN_WIDTH - 320, SCREEN_HEIGHT - 132
         )
         self.take_item_rect = pygame.Rect(0, 0, 0, 0)
 
-        self._font = pygame.font.SysFont("arial", 20)
-        self._small_font = pygame.font.SysFont("arial", 16)
-        self._title_font = pygame.font.SysFont("arial", 30, bold=True)
-        self._button_font = pygame.font.SysFont("arial", 18, bold=True)
+        self._font = content1(20)
+        self._small_font = content1(16)
+        self._title_font = title(30)
+        self._button_font = content1(18)
 
         self._pouch_image = self._fit_image(
             self._load_image(os.path.join(IMAGE_DIR, "pouch.png")),
@@ -163,6 +173,14 @@ class BaseScene(Scene):
 
     def handle_event(self, event):
         """Handle shared HUD controls; return True when consumed."""
+        if (
+            event.type == pygame.MOUSEBUTTONDOWN
+            and event.button == 1
+            and self.restart_button_rect.collidepoint(event.pos)
+        ):
+            self.game.restart_game()
+            return True
+
         if self.inventory_open:
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_ESCAPE, pygame.K_i):
@@ -204,14 +222,25 @@ class BaseScene(Scene):
         screen.blit(self._map_image, self.map_button_rect)
         if self.inventory_open:
             self.draw_inventory(screen)
+        pygame.draw.rect(
+            screen, (145, 48, 39), self.restart_button_rect, border_radius=8
+        )
+        pygame.draw.rect(
+            screen, GOLD, self.restart_button_rect, 2, border_radius=8
+        )
+        restart_label = self._button_font.render("Chơi lại", True, WHITE)
+        screen.blit(
+            restart_label,
+            restart_label.get_rect(center=self.restart_button_rect.center),
+        )
 
     def draw_health_bar(self, screen):
         """Render current and maximum health directly from GameState."""
         scene_names = {
-            "princess_room": "PHÒNG CÔNG CHÚA",
-            "spirit_forest": "RỪNG TINH LINH",
-            "poison_swamp": "ĐẦM LẦY ĐỘC",
-            "dragon_cave": "HANG RỒNG",
+            "princess_room": "Phòng công chúa",
+            "spirit_forest": "Rừng tinh linh",
+            "poison_swamp": "Đầm lầy độc",
+            "dragon_cave": "Hang rồng",
         }
         title = scene_names.get(
             getattr(self.game, "current_scene_id", None),
@@ -242,7 +271,7 @@ class BaseScene(Scene):
         panel = self.inventory_panel_rect
         screen.blit(self._wood_image, panel)
 
-        title = self._title_font.render("TÚI ĐỒ", True, GOLD)
+        title = self._title_font.render("Túi đồ", True, GOLD)
         screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 80)))
         items = self._get_inventory_items()
         grid_rect = self._inventory_grid_rect()
@@ -410,9 +439,9 @@ class BaseScene(Scene):
         panel = self.inventory_panel_rect
         return pygame.Rect(
             panel.x + 144,
-            panel.y + 112,
+            panel.y + 122,
             panel.width - 288,
-            panel.height - 293,
+            panel.height - 303,
         )
 
     @staticmethod

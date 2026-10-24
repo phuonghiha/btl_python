@@ -2,6 +2,7 @@
 import os
 import pygame
 
+from game_fonts import content1
 from scene import Scene
 from settings import SCREEN_WIDTH, SCREEN_HEIGHT
 
@@ -107,7 +108,7 @@ class WorldMap(Scene):
 
         screen.blit(self.map_image, self.map_rect)
 
-        font = pygame.font.SysFont("arial", 18)
+        font = content1(18)
 
         hint = font.render(
             "Bam vao dia diem de di chuyen | ESC: Quay lai",

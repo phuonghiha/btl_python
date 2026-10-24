@@ -1,5 +1,6 @@
 
 import pygame
+from game_fonts import content1, title
 
 from scene import Scene
 from settings import (
@@ -18,12 +19,8 @@ class PlaceholderScene(Scene):
         super().__init__(game)
         self.scene_name = scene_name
 
-        self.font = pygame.font.SysFont(
-            "arial", 34, bold=True
-        )
-        self.small_font = pygame.font.SysFont(
-            "arial", 23
-        )
+        self.font = title(34)
+        self.small_font = content1(23)
 
     def handle_event(self, event):
         pass

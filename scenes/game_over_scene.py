@@ -1,5 +1,6 @@
 
 import pygame
+from game_fonts import content1, title
 
 from scene import Scene
 from settings import (
@@ -27,15 +28,9 @@ class GameOverScene(Scene):
 
         self.background = load_background()
 
-        self.title_font = load_font(
-            TITLE_FONT_PATH, 55
-        )
-        self.message_font = load_font(
-            DIALOGUE_FONT_PATH, 29
-        )
-        self.button_font = load_font(
-            DIALOGUE_FONT_PATH, 28
-        )
+        self.title_font = title(55)
+        self.message_font = content1(29)
+        self.button_font = content1(28)
 
         self.restart_button = pygame.Rect(
             SCREEN_WIDTH // 2 - 175,
@@ -59,7 +54,7 @@ class GameOverScene(Scene):
         screen.blit(self.background, (0, 0))
 
         title = self.title_font.render(
-            "GAME OVER",
+            "Game over",
             True,
             RED,
         )

@@ -1,6 +1,7 @@
 
 import os
 import pygame
+from game_fonts import content1, title
 
 from scene import Scene
 from settings import (
@@ -80,12 +81,8 @@ class StartScene(Scene):
 
         self.background = load_background()
 
-        self.title_font = load_font(
-            TITLE_FONT_PATH, 43
-        )
-        self.button_font = load_font(
-            DIALOGUE_FONT_PATH, 30
-        )
+        self.title_font = title(60)
+        self.button_font = content1(30)
 
         self.start_button = pygame.Rect(
             SCREEN_WIDTH // 2 - 175,
@@ -109,12 +106,12 @@ class StartScene(Scene):
         screen.blit(self.background, (0, 0))
 
         title1 = self.title_font.render(
-            "HÀNH TRÌNH GIẢI CỨU",
+            "Hành trình giải cứu",
             True,
             DARK_BROWN,
         )
         title2 = self.title_font.render(
-            "CÔNG CHÚA",
+            "Công chúa",
             True,
             DARK_BROWN,
         )

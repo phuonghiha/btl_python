@@ -1,5 +1,6 @@
 
 import pygame
+from game_fonts import content1, title
 
 from scene import Scene
 from settings import (
@@ -27,15 +28,9 @@ class IntroScene(Scene):
 
         self.background = load_background()
 
-        self.title_font = load_font(
-            TITLE_FONT_PATH, 38
-        )
-        self.dialogue_font = load_font(
-            DIALOGUE_FONT_PATH, 27
-        )
-        self.button_font = load_font(
-            DIALOGUE_FONT_PATH, 23
-        )
+        self.title_font = title(38)
+        self.dialogue_font = content1(27)
+        self.button_font = content1(23)
 
         # Nút nhận chiếu chỉ
         self.accept_button = pygame.Rect(
@@ -105,7 +100,7 @@ class IntroScene(Scene):
 
         # Tiêu đề
         title = self.title_font.render(
-            "CHIẾU CHỈ HOÀNG GIA",
+            "Chiếu chỉ hoàng gia",
             True,
             DARK_BROWN,
         )

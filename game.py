@@ -30,6 +30,7 @@ class Game:
         pygame.display.set_caption(GAME_TITLE)
         
         self.clock = pygame.time.Clock()
+        self.running = True
         self.game_state = GameState()
         
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -53,6 +54,7 @@ class Game:
 
         self.current_scene = None
         self.current_scene_id = None
+        self._pending_scene_resets = set()
 
         # Khu vực trước khi mở bản đồ
         self.previous_scene_id = "princess_room"
@@ -77,6 +79,12 @@ class Game:
             print(f"Không tìm thấy scene: {scene_id}")
             return
 
+        if scene_id in self._pending_scene_resets:
+            reset = getattr(self.scenes[scene_id], "reset", None)
+            if callable(reset):
+                reset()
+            self._pending_scene_resets.discard(scene_id)
+
         # Ghi nhớ khu vực trước khi mở bản đồ
         if (
             scene_id == "world_map"
@@ -97,25 +105,27 @@ class Game:
     def restart_game(self):
         # Đưa toàn bộ trạng thái về ban đầu
         self.game_state.reset()
-
-        for scene in self.scenes.values():
-            reset = getattr(scene, "reset", None)
-            if callable(reset):
-                reset()
+        self._pending_scene_resets = {
+            scene_id
+            for scene_id, scene in self.scenes.items()
+            if callable(getattr(scene, "reset", None))
+        }
 
         self.previous_scene_id = "princess_room"
 
         self.change_scene("start")
 
-    def run(self):
-        running = True
+    def request_quit(self):
+        """Stop the main loop; pygame is shut down by ``run`` afterward."""
+        self.running = False
 
-        while running:
+    def run(self):
+        while self.running:
             dt = self.clock.tick(FPS) / 1000.0
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    running = False
+                    self.running = False
                     break
 
                 # ESC để quay lại khu vực trước đó
@@ -131,7 +141,7 @@ class Game:
 
                 self.current_scene.handle_event(event)
 
-            if not running:
+            if not self.running:
                 break
 
             self.current_scene.update(dt)
