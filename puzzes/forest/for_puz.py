@@ -1,6 +1,8 @@
+
 import pygame
 import random
 import math
+import os
 
 
 def point_in_polygon(point, polygon):
@@ -19,6 +21,7 @@ def point_in_polygon(point, polygon):
         j = i
 
     return inside
+
 
 
 class Piece:
@@ -56,33 +59,21 @@ class Piece:
         )
 
         mask = pygame.Surface(size, pygame.SRCALPHA)
-
         pygame.draw.polygon(
-            mask,
-            (255, 255, 255, 255),
+            mask, (255, 255, 255, 255),
             self.original_points
         )
 
-        self.mask = pygame.mask.from_surface(mask)
-
+        # Bề mặt gỗ cho mảnh ghép ở ngoài khay.
         pygame.draw.polygon(
             self.wood_surface,
             (139, 88, 43, 255),
             self.original_points
         )
 
-        for y in range(5, self.height, 12):
-            pygame.draw.line(
-                self.wood_surface,
-                (100, 59, 30, 180),
-                (0, y),
-                (self.width, y - 3),
-                2
-            )
-
+        # Chỉ giữ phần gỗ nằm bên trong mảnh.
         self.wood_surface.blit(
-            mask,
-            (0, 0),
+            mask, (0, 0),
             special_flags=pygame.BLEND_RGBA_MULT
         )
 
@@ -93,16 +84,14 @@ class Piece:
             3
         )
 
+        # Cắt đúng vùng ảnh ngôi nhà tương ứng với mảnh.
         crop = pygame.Surface(size, pygame.SRCALPHA)
-
         crop.blit(
             house_texture,
             (-self.min_px, -self.min_py)
         )
-
         crop.blit(
-            mask,
-            (0, 0),
+            mask, (0, 0),
             special_flags=pygame.BLEND_RGBA_MULT
         )
 
@@ -115,109 +104,34 @@ class Piece:
             2
         )
 
-        self.randomize_position(
-            screen_width,
-            screen_height
-        )
+        self.randomize_position(screen_width, screen_height)
 
-    def randomize_position(
-            self,
-            screen_width,
-            screen_height,
-            occupied=None
-    ):
+    def randomize_position(self, screen_width, screen_height):
         margin = 20
-        gap = 12
-
         tray_left = (screen_width - 400) // 2 - 20
         tray_right = (screen_width + 400) // 2 + 20
 
-        left_min = margin
-        left_max = tray_left - self.width - margin
+        left_space = tray_left - margin
+        right_space = screen_width - margin - tray_right
 
-        right_min = tray_right + margin
-        right_max = screen_width - self.width - margin
-
-        if occupied is None:
-            occupied = []
-
-        sides = []
-
-        if left_max >= left_min:
-            sides.append("left")
-
-        if right_max >= right_min:
-            sides.append("right")
-
-        if not sides:
-            self.x = margin
-            self.y = margin
-
-            return pygame.Rect(
-                self.x - gap,
-                self.y - gap,
-                self.width + gap * 2,
-                self.height + gap * 2
-            )
-
-        candidates = []
-
-        for side in sides:
-            if side == "left":
-                min_x = left_min
-                max_x = left_max
-            else:
-                min_x = right_min
-                max_x = right_max
-
-            for _ in range(100):
-                x = random.randint(min_x, max_x)
-
-                y = random.randint(
-                    margin,
-                    max(
-                        margin,
-                        screen_height - self.height - margin
-                    )
-                )
-
-                rect = pygame.Rect(
-                    x - gap,
-                    y - gap,
-                    self.width + gap * 2,
-                    self.height + gap * 2
-                )
-
-                if all(
-                    not rect.colliderect(other)
-                    for other in occupied
-                ):
-                    self.x = x
-                    self.y = y
-                    return rect
-
-                candidates.append((x, y, rect))
-
-        if candidates:
-            x, y, rect = random.choice(candidates)
-
-            self.x = x
-            self.y = y
-
-            return rect
-
-        if "left" in sides:
-            self.x = left_min
+        if left_space >= self.width and right_space >= self.width:
+            side = random.choice(["left", "right"])
+        elif left_space >= self.width:
+            side = "left"
         else:
-            self.x = right_min
+            side = "right"
 
-        self.y = margin
+        if side == "left":
+            min_x = margin
+            max_x = tray_left - self.width
+        else:
+            min_x = tray_right
+            max_x = screen_width - margin - self.width
 
-        return pygame.Rect(
-            self.x - gap,
-            self.y - gap,
-            self.width + gap * 2,
-            self.height + gap * 2
+        self.x = random.randint(min_x, max(min_x, max_x))
+        self.y = random.randint(
+            margin,
+            max(margin, screen_height - self.height - margin)
         )
 
     def get_points(self):
@@ -227,46 +141,28 @@ class Piece:
         ]
 
     def contains(self, pos):
-        px = int(pos[0] - self.x)
-        py = int(pos[1] - self.y)
-
-        if px < 0 or py < 0:
-            return False
-
-        mw, mh = self.mask.get_size()
-
-        if px >= mw or py >= mh:
-            return False
-
-        return self.mask.get_at((px, py))
+        return point_in_polygon(pos, self.get_points())
 
     def draw(self, surface):
         if self.alpha <= 0:
             return
 
+        # Ngoài khay: gỗ.
+        # Đặt đúng vị trí: hiện ảnh ngôi nhà.
         current_surface = (
-            self.house_surface
-            if self.correct
+            self.house_surface if self.correct
             else self.wood_surface
         )
 
         if self.alpha < 255:
             temp = current_surface.copy()
-
             temp.fill(
                 (255, 255, 255, self.alpha),
                 special_flags=pygame.BLEND_RGBA_MULT
             )
-
-            surface.blit(
-                temp,
-                (self.x, self.y)
-            )
+            surface.blit(temp, (self.x, self.y))
         else:
-            surface.blit(
-                current_surface,
-                (self.x, self.y)
-            )
+            surface.blit(current_surface, (self.x, self.y))
 
     def update_snap(self):
         distance = math.hypot(
@@ -283,11 +179,12 @@ class Piece:
         return False
 
 
+
 class TangramGame:
     def __init__(
         self,
         screen,
-        image_path="assets/images/sence_2/793802490_29353841374216909_1805474976622337015_n.png",
+        image_path=None,
         width=1600,
         height=900
     ):
@@ -297,15 +194,27 @@ class TangramGame:
         self.clock = pygame.time.Clock()
 
         self.BOARD_SIZE = 400
-        self.BOARD_X = (
-            self.WIDTH - self.BOARD_SIZE
-        ) // 2
-        self.BOARD_Y = (
-            self.HEIGHT - self.BOARD_SIZE
-        ) // 2
+        self.BOARD_X = (self.WIDTH - self.BOARD_SIZE) // 2
+        self.BOARD_Y = (self.HEIGHT - self.BOARD_SIZE) // 2
 
         self.font = pygame.font.Font(None, 46)
         self.small_font = pygame.font.Font(None, 32)
+
+        if image_path is None:
+            root = os.path.dirname(
+                os.path.dirname(
+                    os.path.dirname(
+                        os.path.abspath(__file__)
+                    )
+                )
+            )
+            image_path = os.path.join(
+                root,
+                "assets",
+                "images",
+                "sence_2",
+                "793802490_29353841374216909_1805474976622337015_n.png"
+            )
 
         self.image_path = image_path
         self.load_and_process_assets()
@@ -331,36 +240,43 @@ class TangramGame:
         self.fade_alpha = 255
 
     def load_and_process_assets(self):
+        # Ảnh gốc có ngôi nhà.
         self.bg_with_house = pygame.transform.smoothscale(
-            pygame.image.load(
-                self.image_path
-            ).convert(),
+            pygame.image.load(self.image_path).convert(),
             (self.WIDTH, self.HEIGHT)
         )
 
-        self.bg_no_house_path = (
-            "assets/images/sence_2/forest_no_house.png"
+        # Ảnh nền cây cổ thụ KHÔNG có ngôi nhà.
+        # Hãy đặt ảnh nền sạch tại đường dẫn này.
+        root = os.path.dirname(
+            os.path.dirname(
+                os.path.dirname(
+                    os.path.abspath(__file__)
+                )
+            )
+        )
+
+        self.bg_no_house_path = os.path.join(
+            root,
+            "assets",
+            "images",
+            "sence_2",
+            "forest_no_house.png"
         )
 
         self.bg_no_house = pygame.transform.smoothscale(
-            pygame.image.load(
-                self.bg_no_house_path
-            ).convert(),
+            pygame.image.load(self.bg_no_house_path).convert(),
             (self.WIDTH, self.HEIGHT)
         )
 
+        # Cắt vùng ngôi nhà từ ảnh gốc làm ảnh cho các mảnh ghép.
         crop_x = int(self.WIDTH * 0.58)
         crop_y = int(self.HEIGHT * 0.10)
         crop_w = int(self.WIDTH * 0.28)
         crop_h = int(self.HEIGHT * 0.45)
 
         house_crop = self.bg_with_house.subsurface(
-            pygame.Rect(
-                crop_x,
-                crop_y,
-                crop_w,
-                crop_h
-            )
+            pygame.Rect(crop_x, crop_y, crop_w, crop_h)
         ).copy()
 
         self.house_texture = pygame.transform.smoothscale(
@@ -373,67 +289,29 @@ class TangramGame:
         BX, BY = self.BOARD_X, self.BOARD_Y
 
         pieces_data = [
-            [
-                (0, 0),
-                (S // 2, S // 2),
-                (0, S)
-            ],
-            [
-                (0, S),
-                (S // 2, S // 2),
-                (S, S)
-            ],
-            [
-                (S // 2, 0),
-                (S, 0),
-                (S, S // 2)
-            ],
-            [
-                (S // 4, S // 4),
-                (S // 2, S // 2),
-                (S * 3 // 4, S // 4)
-            ],
-            [
-                (S * 3 // 4, S * 3 // 4),
-                (S, S // 2),
-                (S, S)
-            ],
-            [
-                (S // 2, S // 2),
-                (S * 3 // 4, S // 4),
-                (S, S // 2),
-                (S * 3 // 4, S * 3 // 4)
-            ],
-            [
-                (0, 0),
-                (S // 2, 0),
-                (S * 3 // 4, S // 4),
-                (S // 4, S // 4)
-            ]
+            [(0, 0), (S // 2, S // 2), (0, S)],
+            [(0, S), (S // 2, S // 2), (S, S)],
+            [(S // 2, 0), (S, 0), (S, S // 2)],
+            [(S // 4, S // 4), (S // 2, S // 2),
+             (S * 3 // 4, S // 4)],
+            [(S * 3 // 4, S * 3 // 4),
+             (S, S // 2), (S, S)],
+            [(S // 2, S // 2), (S * 3 // 4, S // 4),
+             (S, S // 2), (S * 3 // 4, S * 3 // 4)],
+            [(0, 0), (S // 2, 0),
+             (S * 3 // 4, S // 4), (S // 4, S // 4)]
         ]
 
-        self.pieces = []
-        occupied = []
-
-        for pts in pieces_data:
-            piece = Piece(
-                pts,
-                BX,
-                BY,
+        self.pieces = [
+            Piece(
+                pts, BX, BY,
                 self.house_texture,
                 self.BOARD_SIZE,
                 self.WIDTH,
                 self.HEIGHT
             )
-
-            rect = piece.randomize_position(
-                self.WIDTH,
-                self.HEIGHT,
-                occupied
-            )
-
-            occupied.append(rect)
-            self.pieces.append(piece)
+            for pts in pieces_data
+        ]
 
     def reset(self):
         self.completed = False
@@ -442,19 +320,12 @@ class TangramGame:
         self.flash_alpha = 0
         self.selected_piece = None
 
-        occupied = []
-
         for piece in self.pieces:
             piece.correct = False
             piece.alpha = 255
-
-            rect = piece.randomize_position(
-                self.WIDTH,
-                self.HEIGHT,
-                occupied
+            piece.randomize_position(
+                self.WIDTH, self.HEIGHT
             )
-
-            occupied.append(rect)
 
     def handle_event(self, event):
         if (
@@ -465,19 +336,11 @@ class TangramGame:
             mouse = event.pos
 
             for piece in reversed(self.pieces):
-                if (
-                    not piece.correct
-                    and piece.contains(mouse)
-                ):
+                if not piece.correct and piece.contains(mouse):
                     self.selected_piece = piece
                     piece.dragging = True
-
-                    piece.offset_x = (
-                        mouse[0] - piece.x
-                    )
-                    piece.offset_y = (
-                        mouse[1] - piece.y
-                    )
+                    piece.offset_x = mouse[0] - piece.x
+                    piece.offset_y = mouse[1] - piece.y
 
                     self.pieces.remove(piece)
                     self.pieces.append(piece)
@@ -492,24 +355,25 @@ class TangramGame:
                 self.selected_piece.update_snap()
                 self.selected_piece = None
 
+        # elif (
+        #     event.type == pygame.KEYDOWN
+        #     and event.key == pygame.K_r
+        # ):
+        #     self.reset()
+
     def update(self):
         if self.selected_piece is not None:
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
-            self.selected_piece.x = (
-                mouse_x - self.selected_piece.offset_x
-            )
+            self.selected_piece.x = mouse_x - self.selected_piece.offset_x
+            self.selected_piece.y = mouse_y - self.selected_piece.offset_y
 
-            self.selected_piece.y = (
-                mouse_y - self.selected_piece.offset_y
-            )
-
+            # Giữ mảnh ghép nằm trọn trong màn hình khi kéo.
             self.selected_piece.x = max(
                 0,
                 min(
                     self.selected_piece.x,
-                    self.WIDTH
-                    - self.selected_piece.width
+                    self.WIDTH - self.selected_piece.width
                 )
             )
 
@@ -517,15 +381,13 @@ class TangramGame:
                 0,
                 min(
                     self.selected_piece.y,
-                    self.HEIGHT
-                    - self.selected_piece.height
+                    self.HEIGHT - self.selected_piece.height
                 )
             )
 
         if not self.completed:
             self.completed = all(
-                piece.correct
-                for piece in self.pieces
+                piece.correct for piece in self.pieces
             )
 
             if self.completed:
@@ -533,60 +395,38 @@ class TangramGame:
                 self.flash_alpha = 255
 
         if self.fade_started:
-            self.fade_alpha = max(
-                0,
-                self.fade_alpha - 5
-            )
+            self.fade_alpha = max(0, self.fade_alpha - 5)
 
             for piece in self.pieces:
                 piece.alpha = self.fade_alpha
 
             if self.flash_alpha > 0:
                 self.flash_alpha = max(
-                    0,
-                    self.flash_alpha - 6
+                    0, self.flash_alpha - 6
                 )
 
     def draw(self):
-        if (
-            self.completed
-            and self.flash_alpha < 180
-        ):
-            self.screen.blit(
-                self.bg_with_house,
-                (0, 0)
-            )
+        # if self.completed and self.flash_alpha < 180:
+        #     self.screen.blit(self.bg_with_house, (0, 0))
+        # else:
+        #     self.screen.blit(self.bg_no_house, (0, 0))
+        #
+        #     if not self.completed:
+        #         self.screen.blit(self.dark, (0, 0))
+        if self.completed:
+            self.screen.blit(self.bg_with_house, (0, 0))
         else:
-            self.screen.blit(
-                self.bg_no_house,
-                (0, 0)
-            )
-
-            if not self.completed:
-                self.screen.blit(
-                    self.dark,
-                    (0, 0)
-                )
-
-        if self.fade_alpha > 0:
+            self.screen.blit(self.bg_no_house, (0, 0))
+            self.screen.blit(self.dark, (0, 0))
+        if self.fade_alpha > 0 and not self.completed:
             margin = 16
-
-            tray_w = (
-                self.BOARD_SIZE
-                + margin * 2
-            )
-
-            tray_h = (
-                self.BOARD_SIZE
-                + margin * 2
-            )
-
+            tray_w = self.BOARD_SIZE + margin * 2
+            tray_h = self.BOARD_SIZE + margin * 2
             tray_x = self.BOARD_X - margin
             tray_y = self.BOARD_Y - margin
 
             tray_surface = pygame.Surface(
-                (tray_w, tray_h),
-                pygame.SRCALPHA
+                (tray_w, tray_h), pygame.SRCALPHA
             )
 
             pygame.draw.rect(
@@ -607,37 +447,22 @@ class TangramGame:
             pygame.draw.rect(
                 tray_surface,
                 (30, 20, 10, self.fade_alpha),
-                (
-                    margin,
-                    margin,
-                    self.BOARD_SIZE,
-                    self.BOARD_SIZE
-                )
+                (margin, margin, self.BOARD_SIZE, self.BOARD_SIZE)
             )
 
-            self.screen.blit(
-                tray_surface,
-                (tray_x, tray_y)
-            )
+            self.screen.blit(tray_surface, (tray_x, tray_y))
 
-        if self.fade_alpha > 0:
+        if self.fade_alpha > 0 and not self.completed:
             for piece in self.pieces:
                 piece.draw(self.screen)
 
-        if self.flash_alpha > 0:
-            self.flash_surface.set_alpha(
-                self.flash_alpha
-            )
-
-            self.screen.blit(
-                self.flash_surface,
-                (0, 0)
-            )
+        if self.flash_alpha > 0 and not self.completed:
+            self.flash_surface.set_alpha(self.flash_alpha)
+            self.screen.blit(self.flash_surface, (0, 0))
 
         if not self.completed:
             count = sum(
-                piece.correct
-                for piece in self.pieces
+                piece.correct for piece in self.pieces
             )
 
             progress = self.small_font.render(
@@ -646,10 +471,7 @@ class TangramGame:
                 (255, 255, 255)
             )
 
-            self.screen.blit(
-                progress,
-                (25, 25)
-            )
+            self.screen.blit(progress, (25, 25))
 
         if (
             self.completed
@@ -657,9 +479,7 @@ class TangramGame:
             and self.flash_alpha == 0
         ):
             text_surface = self.font.render(
-                "HOÀN THÀNH!",
-                True,
-                (255, 255, 255)
+                "HOÀN THÀNH!", True, (255, 255, 255)
             )
 
             box = pygame.Surface(
@@ -672,24 +492,30 @@ class TangramGame:
 
             box.fill((0, 0, 0, 150))
 
-            box_x = (
-                self.WIDTH // 2
-                - box.get_width() // 2
-            )
-
-            self.screen.blit(
-                box,
-                (box_x, 35)
-            )
+            box_x = self.WIDTH // 2 - box.get_width() // 2
+            self.screen.blit(box, (box_x, 35))
 
             self.screen.blit(
                 text_surface,
                 (
-                    self.WIDTH // 2
-                    - text_surface.get_width() // 2,
+                    self.WIDTH // 2 - text_surface.get_width() // 2,
                     50
                 )
             )
+
+            # reset_text = self.small_font.render(
+            #     "Nhấn R để chơi lại",
+            #     True,
+            #     (255, 255, 255)
+            # )
+            #
+            # self.screen.blit(
+            #     reset_text,
+            #     (
+            #         self.WIDTH // 2 - reset_text.get_width() // 2,
+            #         110
+            #     )
+            # )
 
     def run_frame(self, events):
         for event in events:
@@ -704,26 +530,19 @@ def forest_puzzle():
 
     WIDTH, HEIGHT = 1280, 700
 
-    screen = pygame.display.set_mode(
-        (WIDTH, HEIGHT)
-    )
-
-    pygame.display.set_caption(
-        "House Tangram Puzzle"
-    )
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("House Tangram Puzzle")
 
     game = TangramGame(
         screen,
-        "assets/images/sence_2/793802490_29353841374216909_1805474976622337015_n.png",
-        WIDTH,
-        HEIGHT
+        width=WIDTH,
+        height=HEIGHT
     )
 
     running = True
 
     while running:
         game.clock.tick(60)
-
         events = pygame.event.get()
 
         for event in events:
@@ -731,7 +550,6 @@ def forest_puzzle():
                 running = False
 
         game.run_frame(events)
-
         pygame.display.flip()
 
     pygame.quit()
