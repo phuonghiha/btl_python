@@ -68,11 +68,10 @@ class PrincessRoomScene(BaseScene):
         self.letter_item_icon = self._scaled(self.letter_image, (64, 38))
         self.letter_panel_image = self._scaled(self.letter_image, (760, 370))
         self.scale_tiny = (
-            pygame.transform.scale(self.scale_image, (10, 13))
+            pygame.transform.smoothscale(self.scale_image, (4, 5))
             if self.scale_image
             else None
         )
-        self.scale_found_icon = self._scaled(self.scale_image, (18, 22))
         self.cat = self._make_cat()
         self.cat_x = 930.0
         self.cat_y = 595
@@ -85,11 +84,13 @@ class PrincessRoomScene(BaseScene):
         self.scale_hitbox = pygame.Rect(900, 425, 12, 10)
         self.lens_radius = 100
         self.lens_rect = pygame.Rect(0, 0, 200, 200)
+        self.lens_click_count = 0
+        self.lens_last_click_ms = 0
         self.lens_world_center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         self.puzzle_input_rect = pygame.Rect(0, 0, 0, 0)
         self.puzzle_input_active = False
         self.modal = None
-        self.dialogue = ("Hiệp sĩ", "Con mèo này thật là đáng nghi...")
+        self.dialogue = ("Hiệp sĩ", "Sao con mèo này lại nằm ở đây","Nó là rất đáng nghi...")
         self.dialog_pages = []
         self.dialog_page = 0
         self.type_progress = 0.0
@@ -98,8 +99,6 @@ class PrincessRoomScene(BaseScene):
         self.puzzle_cursor_time = 0.0
         self.notice = ""
         self.notice_time = 0.0
-        self.fade = 0
-        self.transitioning = False
         self.mouse_pos = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         self.font = pygame.font.SysFont("arial", 23)
         self.small = pygame.font.SysFont("arial", 18)
@@ -212,6 +211,7 @@ class PrincessRoomScene(BaseScene):
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             if self.state.magnifier_active:
                 self.state.magnifier_active = False
+                self.selected_item = None
                 return
             if self.modal:
                 if self.modal == "puzzle":
@@ -244,6 +244,21 @@ class PrincessRoomScene(BaseScene):
                 self.modal = None
             return
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.state.magnifier_active:
+                if self.lens_rect.collidepoint(event.pos):
+                    now = pygame.time.get_ticks()
+                    if now - self.lens_last_click_ms <= 900:
+                        self.lens_click_count += 1
+                    else:
+                        self.lens_click_count = 1
+                    self.lens_last_click_ms = now
+                    if self.lens_click_count >= 3:
+                        self.state.magnifier_active = False
+                        self.selected_item = None
+                        self.lens_click_count = 0
+                        return
+                else:
+                    self.lens_click_count = 0
             if self.selected_item:
                 self._use_selected(event.pos)
             else:
@@ -317,7 +332,7 @@ class PrincessRoomScene(BaseScene):
             self._move_knight_to((self.cat_x - 140, self.cat_y))
             self.game_state.inventory.remove("pink_yarn")
             self.selected_item = None
-            self._say("Mèo", "Meo~ bảo bối tìm thấy rồi!", self._start_cat_walk, style="cat")
+            self._say("Mèo", "Meo~ bảo bối của ta đây rồi!", self._start_cat_walk, style="cat")
             return
         self.selected_item = None
 
@@ -341,7 +356,7 @@ class PrincessRoomScene(BaseScene):
         self.state.dragon_scale_found = self.state.dragon_scale_collected = True
         self._add_item("red_dragon_scale")
         self.selected_item = None
-        self._notify("Đã tìm thấy Vảy Rồng Đỏ!")
+        self._notify("Đã tìm thấy Vảy Rồng!")
         self._say(
             "Hiệp sĩ",
             "Đây là vảy rồng sao? Ta phải tìm đường đến chỗ con rồng để cứu nàng. "
@@ -351,7 +366,6 @@ class PrincessRoomScene(BaseScene):
 
     def _finish_room(self):
         self.state.princess_room_completed = True
-        self.transitioning = True
 
     def _room_click(self, pos):
         if self.state.magnifier_active and self.state.letter_read and self._scale_is_visible_in_lens() and self.scale_hitbox.inflate(5, 5).collidepoint(self._lens_screen_to_world(pos)):
@@ -375,8 +389,10 @@ class PrincessRoomScene(BaseScene):
             if self.selected_item == "pink_yarn":
                 self._use_selected(pos)
             elif not self.state.cat_moved:
-                self._say("Mèo", "Thứ đồ yêu thích màu hồng của ta đâu rồi?", self._mark_cat_questioned, style="cat")
+                self._say("Mèo", "Nếu muốn có manh mối về công chúa hãy tìm ra thứ đồ yêu thích của ta trong căn phòng này", self._mark_cat_questioned, style="cat")
         elif self.chest_hitbox.collidepoint(pos):
+            if self.state.chest_opened and self.state.pink_yarn_collected:
+                return
             self._move_knight_to(
                 (self.chest_hitbox.right + 120, BED_CLEARANCE_Y),
                 route_around_bed=True,
@@ -489,10 +505,6 @@ class PrincessRoomScene(BaseScene):
                     self.state.letter_revealed = True
                 if self.cat_x > SCREEN_WIDTH + 110:
                     self.state.cat_moved = True
-        if self.transitioning:
-            self.fade = min(255, self.fade + int(320 * dt))
-            if self.fade >= 255:
-                self.game.change_scene("spirit_forest")
 
     def draw(self, screen):
         screen.blit(self.background, (0, 0))
@@ -525,11 +537,6 @@ class PrincessRoomScene(BaseScene):
         if self.notice_time > 0:
             draw_dialogue_frame(screen, pygame.Rect(350, 22, 580, 52))
             self._text(screen, self.notice, self.small, (70, 45, 26), (640, 48), True)
-        if self.transitioning:
-            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            overlay.fill((0, 0, 0))
-            overlay.set_alpha(self.fade)
-            screen.blit(overlay, (0, 0))
         super().draw(screen)
 
     def _draw_cat(self, screen):
@@ -569,8 +576,8 @@ class PrincessRoomScene(BaseScene):
         if self.state.dragon_scale_collected:
             return
         if self.scale_image:
-            image = self.scale_found_icon if self.state.dragon_scale_found else self.scale_tiny
-            screen.blit(image, image.get_rect(center=self.scale_hitbox.center))
+            if self.scale_tiny:
+                screen.blit(self.scale_tiny, self.scale_tiny.get_rect(center=self.scale_hitbox.center))
             return
         color = (180, 34, 40) if self.state.magnifier_active else (105, 73, 63)
         pygame.draw.ellipse(screen, color, self.scale_hitbox)
@@ -590,11 +597,17 @@ class PrincessRoomScene(BaseScene):
 
     def _draw_lens(self, screen):
         source = self.background.copy()
-        if not self.state.dragon_scale_collected and self.scale_image and self.scale_tiny:
-            source.blit(self.scale_tiny, self.scale_tiny.get_rect(center=self.scale_hitbox.center))
         left, top, crop_size = self._update_lens_mapping()
         crop = source.subsurface((left, top, crop_size, crop_size)).copy()
-        enlarged = pygame.transform.scale(crop, self.lens_rect.size)
+        enlarged = pygame.transform.smoothscale(crop, self.lens_rect.size)
+        if not self.state.dragon_scale_collected and self.scale_image and self._scale_is_visible_in_lens():
+            magnified_size = (self.scale_tiny.get_width() * 15, self.scale_tiny.get_height() * 15)
+            magnified_scale = pygame.transform.smoothscale(self.scale_image, magnified_size)
+            scale_center = (
+                round(self.lens_rect.centerx + (self.scale_hitbox.centerx - self.lens_world_center[0]) * ZOOM_FACTOR),
+                round(self.lens_rect.centery + (self.scale_hitbox.centery - self.lens_world_center[1]) * ZOOM_FACTOR),
+            )
+            enlarged.blit(magnified_scale, magnified_scale.get_rect(center=(scale_center[0] - self.lens_rect.left, scale_center[1] - self.lens_rect.top)))
         lens = pygame.Surface(self.lens_rect.size, pygame.SRCALPHA)
         lens.blit(enlarged, (0, 0))
         mask = pygame.Surface(lens.get_size(), pygame.SRCALPHA)
@@ -615,7 +628,7 @@ class PrincessRoomScene(BaseScene):
             remaining -= len(shown)
             self._text(screen, shown, self.font, (55, 42, 31), (box.x + 28, y))
             y += 31
-        self._text(screen, "ENTER / click để tiếp tục", self.small, (112, 75, 42), (box.right - 245, box.bottom - 28))
+        self._text(screen, "Click", self.small, (112, 75, 42), (box.right - 245, box.bottom - 28))
 
     def _draw_cat_dialog(self, screen):
         box = pygame.Rect(0, 0, 260, 106)
@@ -632,7 +645,7 @@ class PrincessRoomScene(BaseScene):
             remaining -= len(shown)
             self._text(screen, shown, self.small, (55, 42, 31), (box.x + 16, y))
             y += 21
-        prompt = self.small.render("Click để tiếp tục", True, (112, 75, 42))
+        prompt = self.small.render("Click", True, (112, 75, 42))
         screen.blit(prompt, prompt.get_rect(right=box.right - 12, bottom=box.bottom - 10))
 
     def _draw_puzzle(self, screen):
