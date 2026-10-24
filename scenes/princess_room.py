@@ -16,8 +16,13 @@ ASSETS = os.path.join(ROOT, "assets")
 BG_PATH = os.path.join(ASSETS, "images", "sence_1", "background.png")
 SCENE_ASSETS = os.path.join(ASSETS, "images", "sence_1")
 ZOOM_FACTOR = 5
-KNIGHT_DRAW_SIZE = (315, 435)
-WALKABLE_FLOOR = pygame.Rect(0, 405, SCREEN_WIDTH, SCREEN_HEIGHT - 405)
+KNIGHT_DRAW_SIZE = (300, 414)
+# The room floor starts below the bed, bedding, and the balcony sky area.
+WALKABLE_FLOOR = pygame.Rect(0, 520, SCREEN_WIDTH, SCREEN_HEIGHT - 520)
+BED_EDGE_X = 610
+BED_CLEARANCE_Y = 630
+CAT_DRAW_SIZE = (129, 129)
+MAGNIFIER_SIZE = (54, 54)
 
 
 @dataclass
@@ -48,28 +53,35 @@ class PrincessRoomScene(BaseScene):
             self.knight = Knight(SCREEN_WIDTH // 2 - KNIGHT_DRAW_SIZE[0] // 2, 550 - KNIGHT_DRAW_SIZE[1])
         except (pygame.error, OSError, FileNotFoundError):
             self.knight = None
+        self.knight_waypoints = []
+        self.pending_chest_click = None
         self.chest_closed_image = self._load_prop("chest_closed.png")
         self.chest_open_image = self._load_prop("chest_open.png")
         self.yarn_image = self._load_prop("Yarn_ball.png")
         self.letter_image = self._load_prop("Letter.png")
         self.scale_image = self._load_prop("Dragon_scale.png")
         self.magnifier_image = self._load_prop("magnifying glass.png")
-        self.magnifier_icon = self._scaled(self.magnifier_image, (42, 42))
+        self.magnifier_icon = self._scaled(self.magnifier_image, MAGNIFIER_SIZE)
         self.chest_closed_scaled = self._scaled(self.chest_closed_image, (78, 64))
         self.chest_open_scaled = self._scaled(self.chest_open_image, (78, 64))
         self.yarn_icon = self._scaled(self.yarn_image, (50, 50))
-        self.letter_item_icon = self._scaled(self.letter_image, (80, 48))
+        self.letter_item_icon = self._scaled(self.letter_image, (64, 38))
         self.letter_panel_image = self._scaled(self.letter_image, (760, 370))
-        self.scale_tiny = self._scaled(self.scale_image, (6, 8))
+        self.scale_tiny = (
+            pygame.transform.scale(self.scale_image, (10, 13))
+            if self.scale_image
+            else None
+        )
         self.scale_found_icon = self._scaled(self.scale_image, (18, 22))
         self.cat = self._make_cat()
         self.cat_x = 930.0
         self.cat_y = 595
-        self.cat_hitbox = pygame.Rect(880, 495, 100, 100)
+        self.cat_hitbox = pygame.Rect(0, 0, *CAT_DRAW_SIZE)
+        self.cat_hitbox.midbottom = (int(self.cat_x), self.cat_y)
         self.chest_hitbox = pygame.Rect(4, 360, 78, 64)
         self.yarn_hitbox = pygame.Rect(28, 382, 34, 32)
-        self.letter_hitbox = pygame.Rect(890, 510, 80, 48)
-        self.magnifier_hitbox = pygame.Rect(580, 635, 42, 42)
+        self.letter_hitbox = pygame.Rect(898, 542, 64, 38)
+        self.magnifier_hitbox = pygame.Rect(574, 629, *MAGNIFIER_SIZE)
         self.scale_hitbox = pygame.Rect(900, 425, 12, 10)
         self.lens_radius = 100
         self.lens_rect = pygame.Rect(0, 0, 200, 200)
@@ -105,6 +117,7 @@ class PrincessRoomScene(BaseScene):
         self.close_rect = pygame.Rect(0, 0, 0, 0)
         self.submit_rect = pygame.Rect(0, 0, 0, 0)
         self.after_dialog = None
+        self.dialog_style = "standard"
         self._say("Hiệp sĩ", "Con mèo này thật là đáng nghi...", self._mark_intro_shown)
 
     def _mark_intro_shown(self):
@@ -156,10 +169,11 @@ class PrincessRoomScene(BaseScene):
         except (pygame.error, OSError, FileNotFoundError):
             return None
 
-    def _say(self, speaker, text, on_close=None):
+    def _say(self, speaker, text, on_close=None, style="standard"):
         self.modal = "dialog"
         self.dialogue = (speaker, text)
-        self.dialog_pages = self._wrap(text, self.font, 780)
+        self.dialog_style = style
+        self.dialog_pages = self._wrap(text, self.small if style == "cat" else self.font, 220 if style == "cat" else 780)
         self.dialog_page = 0
         self.type_progress = 0.0
         self.after_dialog = on_close
@@ -233,12 +247,7 @@ class PrincessRoomScene(BaseScene):
             if self.selected_item:
                 self._use_selected(event.pos)
             else:
-                if WALKABLE_FLOOR.collidepoint(event.pos):
-                    self._move_knight_to(event.pos)
-                if self.selected_item:
-                    self._use_selected(event.pos)
-                else:
-                    self._room_click(event.pos)
+                self._room_click(event.pos)
 
     def _advance_dialog(self):
         visible_lines = self.dialog_pages[self.dialog_page:self.dialog_page + 3]
@@ -280,18 +289,19 @@ class PrincessRoomScene(BaseScene):
 
     def _submit_puzzle_answer(self):
         if self.puzzle_text.strip() == "136":
-            self.state.puzzle_solved = self.state.chest_opened = True
+            self.state.puzzle_solved = True
             self.game_state.complete_puzzle("princess_chest")
             self.modal = "dialog"
             self.puzzle_input_active = False
             self._say("Hiệp sĩ", "Mở khóa thành công!", self._open_chest)
         else:
-            self.puzzle_message = "Đáp án chưa đúng!"
+            self.puzzle_message = "Sai rồi! Lêu lêuuuuu"
             self.puzzle_text = ""
             self.puzzle_input_active = True
 
     def _open_chest(self):
         self.modal = None
+        self.state.chest_opened = True
         self._notify("Rương đã mở. Bên trong có cuộn len màu hồng.")
 
     def _use_selected(self, pos):
@@ -300,13 +310,14 @@ class PrincessRoomScene(BaseScene):
                 self.state.magnifier_active = False
             world_pos = self._lens_screen_to_world(pos)
             if self._scale_is_visible_in_lens() and self.scale_hitbox.inflate(5, 5).collidepoint(world_pos) and self.state.magnifier_active and self.state.letter_read:
+                self._move_knight_next_to_scale()
                 self._collect_scale()
             return
         if self.selected_item == "pink_yarn" and self.cat_hitbox.collidepoint(pos):
             self._move_knight_to((self.cat_x - 140, self.cat_y))
             self.game_state.inventory.remove("pink_yarn")
             self.selected_item = None
-            self._say("Mèo", "Meo~ Cuối cùng cũng tìm thấy rồi!", self._start_cat_walk)
+            self._say("Mèo", "Meo~ bảo bối tìm thấy rồi!", self._start_cat_walk, style="cat")
             return
         self.selected_item = None
 
@@ -316,10 +327,16 @@ class PrincessRoomScene(BaseScene):
             self.cat.play("stand_up")
         else:
             self.state.cat_moved = True
+            self.state.letter_revealed = True
 
     def _collect_scale(self):
         if self.state.dragon_scale_collected:
             return
+        if self.knight:
+            self.knight.target = None
+            self.knight_waypoints.clear()
+            self.knight.direction = "front"
+            self.knight.animation.play("front")
         self.state.magnifier_active = False
         self.state.dragon_scale_found = self.state.dragon_scale_collected = True
         self._add_item("red_dragon_scale")
@@ -338,40 +355,80 @@ class PrincessRoomScene(BaseScene):
 
     def _room_click(self, pos):
         if self.state.magnifier_active and self.state.letter_read and self._scale_is_visible_in_lens() and self.scale_hitbox.inflate(5, 5).collidepoint(self._lens_screen_to_world(pos)):
+            self._move_knight_next_to_scale()
             self._collect_scale()
         elif self.magnifier_hitbox.collidepoint(pos) and not self.state.magnifier_collected:
             self.state.magnifier_collected = True
             self._add_item("magnifying_glass")
         elif self.state.letter_revealed and self.letter_hitbox.collidepoint(pos):
-            self._move_knight_to((850, 500))
             self.modal = "letter"
             self.state.letter_read = True
+        elif (
+            self.state.chest_opened
+            and not self.state.pink_yarn_collected
+            and self.yarn_hitbox.collidepoint(pos)
+        ):
+            self.state.pink_yarn_collected = True
+            self._add_item("pink_yarn")
         elif self.cat_hitbox.collidepoint(pos):
             self._move_knight_to((self.cat_x - 140, self.cat_y))
             if self.selected_item == "pink_yarn":
                 self._use_selected(pos)
             elif not self.state.cat_moved:
-                self._say("Mèo", "Thứ đồ yêu thích màu hồng của ta đâu rồi?", self._mark_cat_questioned)
+                self._say("Mèo", "Thứ đồ yêu thích màu hồng của ta đâu rồi?", self._mark_cat_questioned, style="cat")
         elif self.chest_hitbox.collidepoint(pos):
-            self._move_knight_to((self.chest_hitbox.right + 170, 480))
-            if not self.state.cat_questioned:
-                self._say("Hiệp sĩ", "Ta nên hỏi con mèo kia xem nó biết gì trước đã.")
-                return
-            if not self.state.chest_opened:
-                self.modal = "puzzle"
-                self.puzzle_text = self.puzzle_message = ""
-                self.puzzle_input_active = False
-            elif not self.state.pink_yarn_collected and self.yarn_hitbox.collidepoint(pos):
-                self.state.pink_yarn_collected = True
-                self._add_item("pink_yarn")
+            self._move_knight_to(
+                (self.chest_hitbox.right + 120, BED_CLEARANCE_Y),
+                route_around_bed=True,
+            )
+            if self.knight:
+                self.pending_chest_click = pos
+            else:
+                self._handle_chest_arrival(pos)
 
-    def _move_knight_to(self, foot_position):
+    def _handle_chest_arrival(self, clicked_pos):
+        if not self.state.cat_questioned:
+            self._say("Hiệp sĩ", "Ta nên hỏi con mèo kia xem nó biết gì trước đã.")
+        elif not self.state.chest_opened:
+            self.modal = "puzzle"
+            self.puzzle_text = self.puzzle_message = ""
+            self.puzzle_input_active = False
+        elif not self.state.pink_yarn_collected and self.yarn_hitbox.collidepoint(clicked_pos):
+            self.state.pink_yarn_collected = True
+            self._add_item("pink_yarn")
+
+    def _move_knight_next_to_scale(self):
+        foot_y = (
+            self.knight.y + KNIGHT_DRAW_SIZE[1]
+            if self.knight
+            else WALKABLE_FLOOR.top
+        )
+        self._move_knight_to(
+            (
+                self.scale_hitbox.centerx + 130,
+                foot_y,
+            )
+        )
+
+    def _move_knight_to(self, foot_position, route_around_bed=False):
         if self.knight:
-            x = foot_position[0] - KNIGHT_DRAW_SIZE[0] // 2
-            y = foot_position[1] - KNIGHT_DRAW_SIZE[1]
+            self.pending_chest_click = None
+            self.knight_waypoints.clear()
+            foot_x = max(0, min(SCREEN_WIDTH, foot_position[0]))
+            foot_y = max(
+                BED_CLEARANCE_Y if foot_x < BED_EDGE_X else WALKABLE_FLOOR.top,
+                min(SCREEN_HEIGHT, foot_position[1]),
+            )
+            x = foot_x - KNIGHT_DRAW_SIZE[0] // 2
+            y = foot_y - KNIGHT_DRAW_SIZE[1]
             x = max(0, min(SCREEN_WIDTH - KNIGHT_DRAW_SIZE[0], x))
-            y = max(0, min(SCREEN_HEIGHT - KNIGHT_DRAW_SIZE[1], y))
-            self.knight.move_to(x, y)
+            if route_around_bed and foot_x < BED_EDGE_X:
+                waypoint_x = BED_EDGE_X + 50 - KNIGHT_DRAW_SIZE[0] // 2
+                waypoint_y = SCREEN_HEIGHT - 55 - KNIGHT_DRAW_SIZE[1]
+                self.knight_waypoints.append((x, y))
+                self.knight.move_to(waypoint_x, waypoint_y)
+            else:
+                self.knight.move_to(x, y)
 
     def _lens_screen_to_world(self, position):
         if not self.lens_rect.collidepoint(position):
@@ -404,6 +461,13 @@ class PrincessRoomScene(BaseScene):
             return
         if self.knight:
             self.knight.update(dt)
+            if self.knight.target is None:
+                if self.knight_waypoints:
+                    self.knight.move_to(*self.knight_waypoints.pop(0))
+                elif self.pending_chest_click is not None:
+                    clicked_pos = self.pending_chest_click
+                    self.pending_chest_click = None
+                    self._handle_chest_arrival(clicked_pos)
         if self.modal == "dialog" and self.dialog_page < len(self.dialog_pages):
             page = self.dialog_pages[self.dialog_page:self.dialog_page + 3]
             self.type_progress = min(sum(map(len, page)), self.type_progress + dt * 42)
@@ -421,9 +485,10 @@ class PrincessRoomScene(BaseScene):
                 self.cat.play("walk")
             elif self.cat.current_animation == "walk":
                 self.cat_x += 180 * dt
+                if self.cat_x - CAT_DRAW_SIZE[0] // 2 > self.letter_hitbox.right:
+                    self.state.letter_revealed = True
                 if self.cat_x > SCREEN_WIDTH + 110:
                     self.state.cat_moved = True
-                    self.state.letter_revealed = True
         if self.transitioning:
             self.fade = min(255, self.fade + int(320 * dt))
             if self.fade >= 255:
@@ -436,18 +501,21 @@ class PrincessRoomScene(BaseScene):
         self._draw_chest(screen)
         if self.knight:
             self.knight.draw(screen, size=KNIGHT_DRAW_SIZE)
-        if not self.state.cat_moved:
-            self._draw_cat(screen)
-        if self.state.letter_revealed:
+        if self.state.letter_revealed or not self.state.cat_moved:
             if self.letter_item_icon:
                 screen.blit(self.letter_item_icon, self.letter_hitbox)
             else:
                 pygame.draw.rect(screen, (231, 207, 151), self.letter_hitbox, border_radius=4)
+        if not self.state.cat_moved:
+            self._draw_cat(screen)
         if not self.state.magnifier_collected:
             self._draw_magnifier_item(screen, self.magnifier_hitbox.center, 0.48)
         self._draw_scale(screen)
         if self.modal == "dialog":
-            self._draw_dialog(screen)
+            if self.dialog_style == "cat":
+                self._draw_cat_dialog(screen)
+            else:
+                self._draw_dialog(screen)
         elif self.modal == "puzzle":
             self._draw_puzzle(screen)
         elif self.modal == "letter":
@@ -468,12 +536,13 @@ class PrincessRoomScene(BaseScene):
         if self.cat:
             frame = self.cat.get_current_frame()
             if frame:
-                frame = pygame.transform.smoothscale(frame, (97, 97))
+                frame = pygame.transform.smoothscale(frame, CAT_DRAW_SIZE)
                 screen.blit(frame, frame.get_rect(midbottom=(int(self.cat_x), self.cat_y)))
         else:
-            pygame.draw.ellipse(screen, (210, 157, 127), (self.cat_x - 37, self.cat_y - 63, 74, 53))
-            pygame.draw.circle(screen, (225, 178, 145), (int(self.cat_x), self.cat_y - 63), 23)
-        self.cat_hitbox.center = (int(self.cat_x), self.cat_y - 50)
+            pygame.draw.ellipse(screen, (210, 157, 127), (self.cat_x - 49, self.cat_y - 84, 98, 71))
+            pygame.draw.circle(screen, (225, 178, 145), (int(self.cat_x), self.cat_y - 84), 31)
+        self.cat_hitbox.size = CAT_DRAW_SIZE
+        self.cat_hitbox.midbottom = (int(self.cat_x), self.cat_y)
 
     def _draw_chest(self, screen):
         image = self.chest_open_scaled if self.state.chest_opened else self.chest_closed_scaled
@@ -547,6 +616,24 @@ class PrincessRoomScene(BaseScene):
             self._text(screen, shown, self.font, (55, 42, 31), (box.x + 28, y))
             y += 31
         self._text(screen, "ENTER / click để tiếp tục", self.small, (112, 75, 42), (box.right - 245, box.bottom - 28))
+
+    def _draw_cat_dialog(self, screen):
+        box = pygame.Rect(0, 0, 260, 106)
+        box.bottom = self.cat_hitbox.top - 12
+        box.left = self.cat_hitbox.centerx + 35
+        box.clamp_ip(pygame.Rect(12, 12, SCREEN_WIDTH - 24, SCREEN_HEIGHT - 24))
+        draw_dialogue_frame(screen, box)
+        self._text(screen, self.dialogue[0], self.small, (112, 65, 34), (box.x + 16, box.y + 12))
+        page = self.dialog_pages[self.dialog_page:self.dialog_page + 3]
+        remaining = int(self.type_progress)
+        y = box.y + 39
+        for line in page:
+            shown = line[:remaining]
+            remaining -= len(shown)
+            self._text(screen, shown, self.small, (55, 42, 31), (box.x + 16, y))
+            y += 21
+        prompt = self.small.render("Click để tiếp tục", True, (112, 75, 42))
+        screen.blit(prompt, prompt.get_rect(right=box.right - 12, bottom=box.bottom - 10))
 
     def _draw_puzzle(self, screen):
         box = pygame.Rect(360, 155, 560, 410)

@@ -12,6 +12,7 @@ import pygame
 from game_state import GameState
 from scenes.princess_room import PrincessRoomScene
 from settings import SCREEN_HEIGHT, SCREEN_WIDTH
+from world_map import WorldMap
 
 
 class PrincessRoomTestHarness:
@@ -20,10 +21,19 @@ class PrincessRoomTestHarness:
     def __init__(self):
         self.game_state = GameState()
         self.next_scene_id = None
+        self.current_scene_id = "princess_room"
+        self.previous_scene_id = "princess_room"
 
     def change_scene(self, scene_id):
-        # Record the transition so it can be inspected while debugging.
-        self.next_scene_id = scene_id
+        if scene_id == "world_map":
+            if self.current_scene_id != "world_map":
+                self.previous_scene_id = self.current_scene_id
+            self.current_scene_id = "world_map"
+        elif scene_id == "princess_room":
+            self.current_scene_id = scene_id
+        else:
+            # Stop the room-only test when it requests an unimplemented scene.
+            self.next_scene_id = scene_id
 
 
 def main():
@@ -34,6 +44,7 @@ def main():
 
     harness = PrincessRoomTestHarness()
     scene = PrincessRoomScene(harness)
+    world_map = WorldMap(harness)
     running = True
 
     try:
@@ -44,17 +55,33 @@ def main():
                     running = False
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_F12:
                     running = False
+                elif (
+                    event.type == pygame.KEYDOWN
+                    and event.key == pygame.K_ESCAPE
+                    and harness.current_scene_id == "world_map"
+                ):
+                    harness.change_scene(harness.previous_scene_id)
                 else:
-                    scene.handle_event(event)
+                    active_scene = (
+                        world_map
+                        if harness.current_scene_id == "world_map"
+                        else scene
+                    )
+                    active_scene.handle_event(event)
 
             if not running:
                 break
 
-            scene.update(dt)
-            scene.draw(screen)
+            active_scene = (
+                world_map
+                if harness.current_scene_id == "world_map"
+                else scene
+            )
+            active_scene.update(dt)
+            active_scene.draw(screen)
 
             if harness.next_scene_id:
-                # The room requested its next scene; end this standalone run.
+                # The room requested a scene this test harness does not run.
                 running = False
 
             pygame.display.flip()

@@ -80,9 +80,6 @@ class BaseScene(Scene):
             self.map_button_rect.width,
             self.map_button_rect.height,
         )
-        self.exit_button_rect = pygame.Rect(
-            SCREEN_WIDTH - 110, SCREEN_HEIGHT - 68, 92, 46
-        )
         self.inventory_panel_rect = pygame.Rect(
             160, 66, SCREEN_WIDTH - 320, SCREEN_HEIGHT - 132
         )
@@ -191,9 +188,6 @@ class BaseScene(Scene):
             if self.map_button_rect.collidepoint(event.pos):
                 self.game.change_scene("world_map")
                 return True
-            if self.exit_button_rect.collidepoint(event.pos):
-                self.game.change_scene("start")
-                return True
 
         return False
 
@@ -206,9 +200,6 @@ class BaseScene(Scene):
         screen.blit(
             self._pouch_image,
             self._pouch_image.get_rect(center=self.inventory_button_rect.center),
-        )
-        self._draw_button(
-            screen, self.exit_button_rect, "EXIT", emphasized=False
         )
         screen.blit(self._map_image, self.map_button_rect)
         if self.inventory_open:
