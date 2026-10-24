@@ -1,4 +1,3 @@
-
 import pygame
 import random
 import math
@@ -170,7 +169,7 @@ class Piece:
             self.y - self.target_y
         )
 
-        if distance < 40:
+        if distance < 12:
             self.x = self.target_x
             self.y = self.target_y
             self.correct = True
@@ -456,7 +455,7 @@ class TangramGame:
             for piece in self.pieces:
                 piece.draw(self.screen)
 
-        if self.flash_alpha > 0 and not self.completed:
+        if self.flash_alpha > 0:
             self.flash_surface.set_alpha(self.flash_alpha)
             self.screen.blit(self.flash_surface, (0, 0))
 
@@ -473,49 +472,6 @@ class TangramGame:
 
             self.screen.blit(progress, (25, 25))
 
-        if (
-            self.completed
-            and self.fade_alpha == 0
-            and self.flash_alpha == 0
-        ):
-            text_surface = self.font.render(
-                "HOÀN THÀNH!", True, (255, 255, 255)
-            )
-
-            box = pygame.Surface(
-                (
-                    text_surface.get_width() + 60,
-                    text_surface.get_height() + 30
-                ),
-                pygame.SRCALPHA
-            )
-
-            box.fill((0, 0, 0, 150))
-
-            box_x = self.WIDTH // 2 - box.get_width() // 2
-            self.screen.blit(box, (box_x, 35))
-
-            self.screen.blit(
-                text_surface,
-                (
-                    self.WIDTH // 2 - text_surface.get_width() // 2,
-                    50
-                )
-            )
-
-            # reset_text = self.small_font.render(
-            #     "Nhấn R để chơi lại",
-            #     True,
-            #     (255, 255, 255)
-            # )
-            #
-            # self.screen.blit(
-            #     reset_text,
-            #     (
-            #         self.WIDTH // 2 - reset_text.get_width() // 2,
-            #         110
-            #     )
-            # )
 
     def run_frame(self, events):
         for event in events:
