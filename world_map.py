@@ -2,7 +2,6 @@
 import os
 import pygame
 
-from game_fonts import content1
 from scene import Scene
 from settings import SCREEN_WIDTH, SCREEN_HEIGHT
 
@@ -108,21 +107,3 @@ class WorldMap(Scene):
 
         screen.blit(self.map_image, self.map_rect)
 
-        font = content1(18)
-
-        hint = font.render(
-            "Bam vao dia diem de di chuyen | ESC: Quay lai",
-            True,
-            (255, 255, 255)
-        )
-
-        hint_rect = hint.get_rect(
-            center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 20)
-        )
-
-        # Nền tối cho dòng hướng dẫn
-        background = hint_rect.inflate(24, 12)
-        pygame.draw.rect(
-            screen, (40, 40, 40), background, border_radius=8
-        )
-        screen.blit(hint, hint_rect)

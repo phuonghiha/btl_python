@@ -10,8 +10,8 @@ _FONT_DIR = os.path.join(
     "fonts",
 )
 
-_TITLE_PATH = os.path.join(_FONT_DIR, "title.otf")
-_CONTENT_PATH = os.path.join(_FONT_DIR, "content1.otf")
+_TITLE_PATH = os.path.join(_FONT_DIR, "title3.ttf")
+_CONTENT_PATH = os.path.join(_FONT_DIR, "content3.otf")
 
 _CACHE = {}
 

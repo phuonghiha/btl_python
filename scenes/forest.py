@@ -191,11 +191,11 @@ class ForestScene(BaseScene):
         self.screen_size = game.screen.get_size()
         self.w, self.h = self.screen_size
 
-        self.font = content1(20)
-        self.small = content1(14)
+        self.font = content1(23)
+        self.small = content1(18)
         self.heading = title(30)
-        self.name_font = title(19)
-        self.echo_font = title(31)
+        self.name_font = title(22)
+        self.echo_font = title(34)
 
         self.forest = self._background(FOREST)
         self.house_bg = self._background(HOUSE)
@@ -488,10 +488,10 @@ class ForestScene(BaseScene):
 
         self._text(
             screen,
-            "ENTER / SPACE / click để tiếp tục",
+            "Click để tiếp tục",
             self.small,
             INK_LIGHT,
-            (rect.right - 80, rect.y + 30),
+            (rect.right - 105, rect.y + 30),
         )
 
     # =====================================================
@@ -534,12 +534,12 @@ class ForestScene(BaseScene):
 
         if side == "left":
             rect = image.get_rect(
-                midbottom=(170, self.h - 175)
+                midbottom=(170, self.h - 145)
             )
         else:
             image = pygame.transform.flip(image, True, False)
             rect = image.get_rect(
-                midbottom=(self.w - 155, self.h - 175)
+                midbottom=(self.w - 155, self.h - 145)
             )
 
         screen.blit(image, rect)
@@ -671,7 +671,7 @@ class ForestScene(BaseScene):
 
         self._text(
             screen,
-            "ENTER / SPACE / click để tiếp tục",
+            "Click để tiếp tục",
             self.small,
             GOLD,
             (self.w // 2, self.h - 35),
@@ -781,7 +781,7 @@ class ForestScene(BaseScene):
 
         self._text(
             screen,
-            "ENTER / SPACE / click để tiếp tục",
+            "Click để tiếp tục",
             self.small,
             WHITE,
             (self.w // 2, self.h - 35),
@@ -1046,7 +1046,7 @@ class ForestScene(BaseScene):
 
             self._text(
                 screen,
-                "ENTER / SPACE / click để bắt đầu",
+                "Click để bắt đầu",
                 self.small,
                 GOLD,
                 (self.w // 2, self.h - 45),
@@ -1094,7 +1094,7 @@ class ForestScene(BaseScene):
 
             self._text(
                 screen,
-                "ENTER / SPACE / click để đối thoại",
+                "Click để đối thoại",
                 self.small,
                 WHITE,
                 (self.w // 2, self.h - 35),
@@ -1164,7 +1164,7 @@ class ForestScene(BaseScene):
 
             self._text(
                 screen,
-                "ENTER / SPACE / click để tiếp tục",
+                "Click để tiếp tục",
                 self.small,
                 WHITE,
                 (self.w // 2, self.h - 40),

@@ -138,13 +138,6 @@ class IntroScene(Scene):
             self.accept_button,
             border_radius=10,
         )
-        pygame.draw.rect(
-            screen,
-            GOLD,
-            self.accept_button,
-            width=3,
-            border_radius=10,
-        )
 
         accept_text = self.button_font.render(
             "NHẬN CHIẾU CHỈ",
@@ -164,13 +157,6 @@ class IntroScene(Scene):
             screen,
             RED,
             self.refuse_button,
-            border_radius=10,
-        )
-        pygame.draw.rect(
-            screen,
-            GOLD,
-            self.refuse_button,
-            width=3,
             border_radius=10,
         )
 

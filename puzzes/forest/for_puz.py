@@ -460,20 +460,6 @@ class TangramGame:
             self.flash_surface.set_alpha(self.flash_alpha)
             self.screen.blit(self.flash_surface, (0, 0))
 
-        if not self.completed:
-            count = sum(
-                piece.correct for piece in self.pieces
-            )
-
-            progress = self.small_font.render(
-                f"Tiến độ: {count}/{len(self.pieces)}",
-                True,
-                (255, 255, 255)
-            )
-
-            self.screen.blit(progress, (25, 25))
-
-
     def run_frame(self, events):
         for event in events:
             self.handle_event(event)

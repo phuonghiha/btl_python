@@ -136,13 +136,6 @@ class StartScene(Scene):
             self.start_button,
             border_radius=12,
         )
-        pygame.draw.rect(
-            screen,
-            GOLD,
-            self.start_button,
-            width=3,
-            border_radius=12,
-        )
 
         text = self.button_font.render(
             "BẮT ĐẦU CHƠI",

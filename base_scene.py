@@ -1,10 +1,4 @@
-"""Reusable game HUD, inventory, and navigation helpers for scenes.
 
-Scenes can inherit from :class:`BaseScene` and call ``super().draw(screen)``
-after drawing their own world. Their event handler should call
-``super().handle_event(event)`` first and return when it reports ``True``.
-Collected item IDs and health are stored in the existing ``GameState``.
-"""
 
 from dataclasses import dataclass
 import os
@@ -32,7 +26,6 @@ STANDARD_DIALOG_RECT = pygame.Rect(
 
 
 def draw_dialogue_frame(screen, rect):
-    """Draw the shared parchment frame used by hints and dialogue boxes."""
     pygame.draw.rect(
         screen, (31, 22, 16), rect.move(0, 5), border_radius=12
     )
@@ -49,7 +42,6 @@ def draw_dialogue_frame(screen, rect):
 
 @dataclass(frozen=True)
 class InventoryItem:
-    """Display metadata for an item stored in the shared GameState."""
 
     item_id: str
     name: str
@@ -57,12 +49,6 @@ class InventoryItem:
 
 
 class BaseScene(Scene):
-    """Shared HUD and inventory helpers for gameplay scenes.
-
-    ``GameState.inventory`` remains the source of truth for ownership. Item
-    display metadata and loaded surfaces are cached here so scenes can add
-    items with one call and reuse the same images after changing locations.
-    """
 
     _item_definitions = {}
     _image_cache = {}
@@ -99,6 +85,7 @@ class BaseScene(Scene):
         self._small_font = content1(16)
         self._title_font = title(30)
         self._button_font = content1(18)
+        self._scene_name_font = content1(25)
 
         self._pouch_image = self._fit_image(
             self._load_image(os.path.join(IMAGE_DIR, "pouch.png")),
@@ -142,12 +129,6 @@ class BaseScene(Scene):
         return pygame.transform.smoothscale(image, size)
 
     def add_item(self, item_id, name, image_path):
-        """Register and add a collected item to the shared inventory.
-
-        Returns ``True`` only when this call adds a previously unowned item.
-        Call this from the scene event that actually collects the item.
-        ``image_path`` may be absolute or relative to the project directory.
-        """
         if not item_id:
             raise ValueError("item_id must be a non-empty string")
         if not name:
@@ -172,7 +153,6 @@ class BaseScene(Scene):
         return True
 
     def handle_event(self, event):
-        """Handle shared HUD controls; return True when consumed."""
         if (
             event.type == pygame.MOUSEBUTTONDOWN
             and event.button == 1
@@ -225,9 +205,6 @@ class BaseScene(Scene):
         pygame.draw.rect(
             screen, (145, 48, 39), self.restart_button_rect, border_radius=8
         )
-        pygame.draw.rect(
-            screen, GOLD, self.restart_button_rect, 2, border_radius=8
-        )
         restart_label = self._button_font.render("Chơi lại", True, WHITE)
         screen.blit(
             restart_label,
@@ -235,7 +212,6 @@ class BaseScene(Scene):
         )
 
     def draw_health_bar(self, screen):
-        """Render current and maximum health directly from GameState."""
         scene_names = {
             "princess_room": "Phòng công chúa",
             "spirit_forest": "Rừng tinh linh",
@@ -247,10 +223,10 @@ class BaseScene(Scene):
             getattr(self, "scene_name", ""),
         )
         if title:
-            title_image = self._button_font.render(title, True, WHITE)
+            title_image = self._scene_name_font.render(title, True, WHITE)
             screen.blit(title_image, (20, 10))
 
-        bar = pygame.Rect(20, 38, 222, 24)
+        bar = pygame.Rect(20, 48, 222, 24)
         pygame.draw.rect(screen, DARK_BROWN, bar, border_radius=6)
         max_health = max(1, self.game_state.max_health)
         ratio = max(0.0, min(1.0, self.game_state.health / max_health))
@@ -460,13 +436,11 @@ class BaseScene(Scene):
         return lines or [""]
 
     def _draw_button(
-        self, screen, rect, label, emphasized, border_color=GOLD, text_color=None
+        self, screen, rect, label, emphasized, border_color=None, text_color=None
     ):
         fill = (119, 77, 44) if emphasized else (226, 207, 170)
         if text_color is None:
             text_color = WHITE if emphasized else DARK_BROWN
         pygame.draw.rect(screen, fill, rect, border_radius=8)
-        if border_color is not None:
-            pygame.draw.rect(screen, border_color, rect, 2, border_radius=8)
         text = self._button_font.render(label, True, text_color)
         screen.blit(text, text.get_rect(center=rect.center))

@@ -83,13 +83,6 @@ class GameOverScene(Scene):
             self.restart_button,
             border_radius=12,
         )
-        pygame.draw.rect(
-            screen,
-            GOLD,
-            self.restart_button,
-            width=3,
-            border_radius=12,
-        )
 
         text = self.button_font.render(
             "CHƠI LẠI",
