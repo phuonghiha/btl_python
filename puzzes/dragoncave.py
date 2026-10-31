@@ -1,3 +1,4 @@
+
 import pygame
 import random
 import math
@@ -42,6 +43,22 @@ class DragonBlockGame:
         self.game_state = game_state
         self.width, self.height = screen.get_size()
         self.ui_scale = min(self.width / 1400, self.height / 900)
+        background_path = (
+                Path(__file__).resolve().parents[1]
+                / "assets"
+                / "images"
+                / "sence_4"
+                / "dragon_cave.png"
+        )
+
+        self.background_image = pygame.image.load(
+            str(background_path)
+        ).convert()
+
+        self.background_image = pygame.transform.smoothscale(
+            self.background_image,
+            (self.width, self.height)
+        )
         self.CELL = max(40, int(68 * self.ui_scale))
         self.BOARD_X = int(self.width * 0.46 - self.COLS * self.CELL / 2)
         self.BOARD_Y = int(190 * self.ui_scale)
@@ -76,6 +93,13 @@ class DragonBlockGame:
             (character_size, character_size),
         )
         self.dragon_attack_flash_timer = 0
+        self.fireball_active = False
+        self.fireball_time = 0.0
+        self.fireball_duration = 720.0
+        self.battle_dialog_speaker = "Rồng"
+        self.battle_dialog_text = "Đầu hàng đi, hỡi con người bé nhỏ sức cùng lực kiệt"
+        self.battle_dialog_timer = 5200.0
+        self.knight_low_hp_dialog_shown = False
 
         self.font_big = title(max(24, int(34 * self.ui_scale)))
         self.font = content1(max(16, int(22 * self.ui_scale)))
@@ -414,6 +438,24 @@ class DragonBlockGame:
             self.place_piece(p)
 
         self.rebuild_piece_cells()
+
+    def show_battle_dialog(self, speaker, text, duration=3600):
+        self.battle_dialog_speaker = speaker
+        self.battle_dialog_text = text
+        self.battle_dialog_timer = float(duration)
+
+    def check_knight_low_hp_dialog(self):
+        if (
+            not self.knight_low_hp_dialog_shown
+            and self.knight_hp > 0
+            and self.knight_hp < self.MAX_HP * 0.2
+        ):
+            self.knight_low_hp_dialog_shown = True
+            self.show_battle_dialog(
+                "Hiệp sĩ",
+                "Ta sẽ không bỏ cuộc",
+                4200,
+            )
 
     def start_message(self, text, duration=1300):
         self.message = text
@@ -854,6 +896,7 @@ class DragonBlockGame:
             self.game_state.take_damage(damage)
 
         self.start_message(f"Rồng tấn công! Hiệp sĩ mất {damage} máu!", 1400)
+        self.check_knight_low_hp_dialog()
         if self.knight_hp <= 0:
             self.game_over = True
             self.win = False
@@ -943,6 +986,13 @@ class DragonBlockGame:
         self.dragon_defense_done = False
         self.dragon_attacks_received += 1
         self.dragon_attack_flash_timer = self.ATTACK_TIME
+        self.fireball_active = True
+        self.fireball_time = 0.0
+        self.show_battle_dialog(
+            "Rồng",
+            "Đầu hàng đi, hỡi con người bé nhỏ sức cùng lực kiệt",
+            3600,
+        )
         block_count = 2 if not self.sword else 1
 
         for _ in range(block_count):
@@ -1222,6 +1272,12 @@ class DragonBlockGame:
             0,
             self.dragon_attack_flash_timer - dt,
         )
+        if self.fireball_active:
+            self.fireball_time += dt
+            if self.fireball_time >= self.fireball_duration:
+                self.fireball_active = False
+        if self.battle_dialog_timer > 0:
+            self.battle_dialog_timer = max(0, self.battle_dialog_timer - dt)
 
     def handle_event(self, event):
         if (
@@ -1855,39 +1911,111 @@ class DragonBlockGame:
         self.screen.blit(self.knight_image, (knight_x, knight_y))
 
     def draw_dragon_fire(self):
-        if self.dragon_attack_flash_timer <= 0:
+        if not self.fireball_active:
             return
 
-        center_x = self.BOARD_X + self.COLS * self.CELL // 2
-        start_y = self.BOARD_Y - int(34 * self.ui_scale)
-        end_y = self.BOARD_Y + self.ROWS * self.CELL + int(18 * self.ui_scale)
-        wobble = int(9 * math.sin(pygame.time.get_ticks() / 35))
-        flame = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        outer_width = max(24, int(42 * self.ui_scale))
-        inner_width = max(8, int(15 * self.ui_scale))
-        points = [
-            (center_x - outer_width // 3, start_y),
-            (center_x + outer_width // 3, start_y),
-            (center_x + outer_width // 2 + wobble, end_y - 28),
-            (center_x + outer_width // 2, end_y),
-            (center_x - outer_width // 2, end_y),
-            (center_x - outer_width // 2 + wobble, end_y - 28),
-        ]
-        pygame.draw.polygon(flame, (244, 70, 18, 150), points)
-        pygame.draw.line(
-            flame,
-            (255, 183, 52, 205),
-            (center_x, start_y),
-            (center_x + wobble // 2, end_y),
-            inner_width,
+        dragon_x = self.BOARD_X + self.COLS * self.CELL // 2
+        dragon_y = self.BOARD_Y - int(104 * self.ui_scale)
+        knight_x = self.BOARD_X + self.COLS * self.CELL // 2
+        knight_y = self.BOARD_Y + self.ROWS * self.CELL + int(70 * self.ui_scale)
+
+        progress = min(1.0, self.fireball_time / self.fireball_duration)
+        eased = progress * progress * (3 - 2 * progress)
+        current_x = dragon_x + (knight_x - dragon_x) * eased
+        current_y = dragon_y + (knight_y - dragon_y) * eased
+
+        wobble = math.sin(self.fireball_time / 34.0) * 7 * self.ui_scale
+        current_x += wobble
+        radius = max(12, int((17 + 8 * math.sin(self.fireball_time / 45.0)) * self.ui_scale))
+        layer = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+
+        # Trail of embers behind the moving fireball.
+        for index in range(5, 0, -1):
+            tail_progress = max(0.0, progress - index * 0.035)
+            tail_eased = tail_progress * tail_progress * (3 - 2 * tail_progress)
+            tail_x = dragon_x + (knight_x - dragon_x) * tail_eased
+            tail_y = dragon_y + (knight_y - dragon_y) * tail_eased
+            tail_radius = max(3, int(radius * (1 - index * 0.13)))
+            pygame.draw.circle(
+                layer,
+                (255, 75, 18, max(20, 145 - index * 22)),
+                (int(tail_x), int(tail_y)),
+                tail_radius,
+            )
+
+        pygame.draw.circle(
+            layer,
+            (255, 55, 12, 85),
+            (int(current_x), int(current_y)),
+            radius * 2,
         )
         pygame.draw.circle(
-            flame,
-            (255, 230, 126, 210),
-            (center_x + wobble // 2, end_y - 3),
-            max(12, int(22 * self.ui_scale)),
+            layer,
+            (245, 82, 20, 225),
+            (int(current_x), int(current_y)),
+            radius,
         )
-        self.screen.blit(flame, (0, 0))
+        pygame.draw.circle(
+            layer,
+            (255, 205, 75, 245),
+            (int(current_x), int(current_y)),
+            max(4, radius // 2),
+        )
+        pygame.draw.circle(
+            layer,
+            (255, 246, 190, 255),
+            (int(current_x), int(current_y)),
+            max(2, radius // 4),
+        )
+
+        self.screen.blit(layer, (0, 0))
+
+    def draw_battle_dialog(self):
+        if self.battle_dialog_timer <= 0 or not self.battle_dialog_text:
+            return
+
+        scale = self.ui_scale
+        width = min(int(760 * scale), self.width - int(40 * scale))
+        height = int(94 * scale)
+        x = (self.width - width) // 2
+
+        if self.battle_dialog_speaker == "Hiệp sĩ":
+            y = self.height - height - int(18 * scale)
+            border = (105, 150, 205)
+            title_color = (190, 220, 255)
+        else:
+            y = max(int(18 * scale), self.BOARD_Y - int(175 * scale))
+            border = (200, 86, 48)
+            title_color = (255, 205, 145)
+
+        panel = pygame.Surface((width, height), pygame.SRCALPHA)
+        panel.fill((28, 18, 15, 225))
+        pygame.draw.rect(panel, border, panel.get_rect(), max(2, int(3 * scale)), border_radius=10)
+
+        name = self.font_small.render(self.battle_dialog_speaker, True, title_color)
+        panel.blit(name, (int(18 * scale), int(9 * scale)))
+
+        words = self.battle_dialog_text.split()
+        lines = []
+        current = ""
+        max_text_width = width - int(36 * scale)
+        for word in words:
+            candidate = f"{current} {word}".strip()
+            if current and self.font_small.size(candidate)[0] > max_text_width:
+                lines.append(current)
+                current = word
+            else:
+                current = candidate
+        if current:
+            lines.append(current)
+
+        line_y = int(39 * scale)
+        for line in lines[:2]:
+            text = self.font_small.render(line, True, (255, 245, 225))
+            panel.blit(text, (int(18 * scale), line_y))
+            line_y += self.font_small.get_linesize()
+
+        self.screen.blit(panel, (x, y))
 
     def draw_ui(self):
         scale = self.ui_scale
@@ -2005,6 +2133,12 @@ class DragonBlockGame:
         self.activated_shield_levels = set()
         self.dragon_defense_done = False
         self.dragon_attack_flash_timer = 0
+        self.fireball_active = False
+        self.fireball_time = 0.0
+        self.battle_dialog_speaker = "Rồng"
+        self.battle_dialog_text = "Đầu hàng đi, hỡi con người bé nhỏ sức cùng lực kiệt"
+        self.battle_dialog_timer = 5200.0
+        self.knight_low_hp_dialog_shown = False
 
         self.turn = 0
         self.failed_turns = 0
@@ -2025,8 +2159,9 @@ class DragonBlockGame:
         self.create_initial_board()
 
     def draw(self):
-        self.screen.fill(
-            (248, 235, 212)
+        self.screen.blit(
+            self.background_image,
+            (0, 0)
         )
 
         if self.animation is None:
@@ -2056,3 +2191,5 @@ class DragonBlockGame:
         self.draw_knight()
         self.draw_dragon_fire()
         self.draw_ui()
+        self.draw_battle_dialog()
+

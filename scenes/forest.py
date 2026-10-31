@@ -8,10 +8,6 @@ from settings import GOLD, WHITE
 from puzzes.forest.for_puz import TangramGame
 
 
-# =========================================================
-# DUONG DAN
-# =========================================================
-
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 IMG = os.path.join(ROOT, "assets", "images", "sence_2")
@@ -30,10 +26,6 @@ SPIRIT_DIR = os.path.join(SPR, "spirit")
 KNIGHT_IDLE = os.path.join(KNIGHT_DIR, "IDLE", "Đứng_1.png")
 KNIGHT_DIALOG = os.path.join(KNIGHT_DIR, "front", "1.png")
 KNIGHT_WALK_DIR = os.path.join(KNIGHT_DIR, "Walk_right")
-
-DRAGON_SCALE_IMAGE = os.path.join(
-    ROOT, "assets", "images", "sence_1", "Dragon_scale.png"
-)
 
 SPIRIT_GEM_IMAGE = os.path.join(
     ROOT, "assets", "images", "gem.png"
@@ -54,10 +46,6 @@ PAPER_BORDER_LIGHT = (157, 119, 72)
 INK = (45, 35, 25)
 INK_LIGHT = (75, 55, 38)
 
-
-# =========================================================
-# CAC HAM XU LY ANH
-# =========================================================
 
 def cover(image, size):
     iw, ih = image.get_size()
@@ -176,10 +164,6 @@ def load_spirit_frames():
     return result
 
 
-# =========================================================
-# FOREST SCENE
-# =========================================================
-
 class ForestScene(BaseScene):
 
     def __init__(self, game):
@@ -187,6 +171,10 @@ class ForestScene(BaseScene):
 
         self.game = game
         self.game_state = game.game_state
+
+        # Nếu Forest được tạo lại sau khi rời đi,
+        # instance mới sẽ tự bắt đầu với trạng thái ban đầu.
+        self._clear_pending_reset()
 
         self.screen_size = game.screen.get_size()
         self.w, self.h = self.screen_size
@@ -221,76 +209,13 @@ class ForestScene(BaseScene):
 
         self.spirits = load_spirit_frames()
 
-        # Anh vat pham dung duong dan trong repository.
-        self.scale_image = self._load_item_image(
-            DRAGON_SCALE_IMAGE, (300, 300)
-        )
-
         self.gem_image = self._load_item_image(
             SPIRIT_GEM_IMAGE, (300, 300)
         )
 
-        self.scene = "approach"
-        self.timer = 0.0
-        self.echo_time = 0.0
+        # self._init_story_state()
 
-        self.knight_x = -170
-
-        self.dialog_index = 0
-        self.char_progress = 0.0
-
-        self.puzzle = None
-        self.puzzle_done_time = 0.0
-
-        self.item_reveal_time = 0.0
-        self.item_reveal_kind = None
-        self.reveal_return_scene = "dialog"
-
-        self.scale_revealed = False
-        self.gem_revealed = False
-
-        self.finished = False
-
-        #self._set_state("forest_gemstone", False)
-
-        self.intro_dialogs = [
-            (
-                "Hiệp sĩ",
-                "Một ngôi nhà giữa khu rừng...? "
-                "Ta phải tiến lại gần xem sao.",
-            ),
-            (
-                "Hiệp sĩ",
-                "Kỳ lạ... vừa rồi nó còn ở đây. "
-                "Tại sao lại biến mất?",
-            ),
-            (
-                "???",
-                "Kẻ xâm nhập... ngươi đến nơi này "
-                "để tìm kiếm điều gì?",
-            ),
-            (
-                "Hiệp sĩ",
-                "Ai đó? Hãy hiện thân! "
-                "Ta không đến đây để gây chiến.",
-            ),
-            (
-                "???",
-                "Muốn được khu rừng công nhận, "
-                "đôi mắt của ngươi là chưa đủ.",
-            ),
-            (
-                "???",
-                "Nếu thật sự có trí tuệ, "
-                "hãy khôi phục lại thứ mà khu rừng đã che giấu.",
-            ),
-        ]
-
-        # -------------------------------------------------
-        # HOI THOAI SAU KHI GIAI DO
-        # -------------------------------------------------
-
-        self.dialogs = [
+        self.dialogs_with_scale = [
             (
                 "Tinh linh",
                 "Ngươi đã khôi phục ký ức của khu rừng. "
@@ -358,9 +283,123 @@ class ForestScene(BaseScene):
             ),
         ]
 
+        self.dialogs_without_scale = [
+            (
+                "Tinh linh",
+                "Ngươi đã khôi phục ký ức của khu rừng. "
+                "Ta công nhận trí tuệ của ngươi.",
+                "happy",
+            ),
+            (
+                "Tinh linh",
+                "Nhưng thật kì lạ... "
+                "ta lại chẳng cảm nhận được điều gì đặc biệt ở ngươi.",
+                "thinking",
+            ),
+            (
+                "Tinh linh",
+                "Không biết điều gì đã dẫn ngươi đến đây... "
+                "có lẽ ngươi chỉ là 1 kẻ lạc đường?",
+                "curious",
+            ),
+            (
+                "Hiệp sĩ",
+                "Đúng vậy. Ta đang tìm đường ra khỏi khu rừng. "
+                "Ngươi có thể chỉ đường cho ta không?",
+                "curious",
+            ),
+            (
+                "Tinh linh",
+                "Hãy đi theo dòng suối phía trước. "
+                "Ngươi sẽ tìm thấy một đoạn nước có thể lội qua.",
+                "happy",
+            ),
+            (
+                "Tinh linh",
+                "Sau khi qua suối, hãy tiếp tục đi xuyên qua rừng. "
+                "Con đường đó sẽ dẫn ngươi đến thị trấn.",
+                "thinking",
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta hiểu rồi. Cảm ơn ngươi đã giúp đỡ.",
+                "happy",
+            ),
+            (
+                "Tinh linh",
+                "Chúc ngươi thượng lộ bình an, lữ khách.",
+                "happy",
+            ),
+        ]
+
+        self.dialogs = self.dialogs_without_scale
+
+        self.intro_dialogs = [
+            (
+                "Hiệp sĩ",
+                "Một ngôi nhà giữa khu rừng...? "
+                "Ta phải tiến lại gần xem sao.",
+            ),
+            (
+                "Hiệp sĩ",
+                "Kỳ lạ... vừa rồi nó còn ở đây. "
+                "Tại sao lại biến mất?",
+            ),
+            (
+                "???",
+                "Kẻ xâm nhập... ngươi đến nơi này "
+                "để tìm kiếm điều gì?",
+            ),
+            (
+                "Hiệp sĩ",
+                "Ai đó? Hãy hiện thân! "
+                "Ta không đến đây để gây chiến.",
+            ),
+            (
+                "???",
+                "Muốn được khu rừng công nhận, "
+                "đôi mắt của ngươi là chưa đủ.",
+            ),
+            (
+                "???",
+                "Nếu thật sự có trí tuệ, "
+                "hãy khôi phục lại thứ mà khu rừng đã che giấu.",
+            ),
+        ]
+
+        self._init_story_state()
+
+
     # =====================================================
-    # STATE HELPERS
+    # KHỞI TẠO TRẠNG THÁI
     # =====================================================
+
+    def _init_story_state(self):
+        self.scene = "approach"
+        self.timer = 0.0
+        self.echo_time = 0.0
+
+        self.knight_x = -170
+
+        self.dialog_index = 0
+        self.char_progress = 0.0
+
+        self.puzzle = None
+        self.puzzle_done_time = 0.0
+
+        self.item_reveal_time = 0.0
+        self.item_reveal_kind = None
+        self.reveal_return_scene = "dialog"
+
+        self.gem_revealed = False
+        self.blessing_granted = False
+
+        self.has_dragon_scale = False
+
+        self.finished = False
+        self.transitioned = False
+
+        self.dialogs = self.dialogs_without_scale
 
     def _set_state(self, name, value):
         try:
@@ -371,7 +410,77 @@ class ForestScene(BaseScene):
     def _get_state(self, name, default=False):
         return getattr(self.game_state, name, default)
 
+    def _mark_reset_when_reentering(self):
+        """
+        Đánh dấu Forest cần khởi động lại khi người chơi
+        rời Forest và quay lại sau này.
+
+        Không reset instance hiện tại, vì màn hình ending
+        vẫn cần được giữ nguyên khi người chơi mở bản đồ.
+        """
+        self._set_state("forest_reset_pending", True)
+
+    def _clear_pending_reset(self):
+        """
+        Xóa cờ reset khi một ForestScene mới được tạo.
+        Túi đồ và các dữ liệu khác trong game_state không bị xóa.
+        """
+        self._set_state("forest_reset_pending", False)
+
+    def on_enter(self):
+        """
+        Nếu Game của bạn gọi on_enter() khi quay lại một scene
+        đã tồn tại, kiểm tra cờ reset và khởi tạo lại Forest.
+        """
+        if self._get_state("forest_reset_pending", False):
+            self._clear_pending_reset()
+            self.reset()
+
+    # =====================================================
+    # GAME STATE
+    # =====================================================
+
+    def _has_dragon_scale(self):
+        item_id = "dragon_scale"
+
+        checker = getattr(self.game_state, "has_item", None)
+
+        if callable(checker):
+            try:
+                if checker(item_id):
+                    return True
+            except (AttributeError, TypeError, KeyError):
+                pass
+
+        inventory = getattr(self.game_state, "inventory", [])
+
+        if isinstance(inventory, dict):
+            return item_id in inventory
+
+        try:
+            return item_id in inventory
+        except TypeError:
+            return False
+
+    def _select_story_branch(self):
+        self.has_dragon_scale = self._has_dragon_scale()
+
+        if self.has_dragon_scale:
+            self.dialogs = self.dialogs_with_scale
+            print("[ForestScene] Chon nhanh: CO vay rong")
+        else:
+            self.dialogs = self.dialogs_without_scale
+            print("[ForestScene] Chon nhanh: KHONG CO vay rong")
+
     def _grant_blessing(self):
+        if not self.has_dragon_scale:
+            return
+
+        if self.blessing_granted:
+            return
+
+        self.blessing_granted = True
+
         self._set_state("has_poison_protection", True)
         self._set_state("forest_gemstone", True)
         self._set_state("forest_puzzle_completed", True)
@@ -383,8 +492,11 @@ class ForestScene(BaseScene):
 
         self._set_state("dragon_cave_clue", clue)
 
-        self.game_state.add_clue(clue)
-        self.game_state.complete_puzzle("forest_tangram")
+        if hasattr(self.game_state, "add_clue"):
+            self.game_state.add_clue(clue)
+
+        if hasattr(self.game_state, "complete_puzzle"):
+            self.game_state.complete_puzzle("forest_tangram")
 
         self.add_item(
             "forest_gemstone",
@@ -393,7 +505,7 @@ class ForestScene(BaseScene):
         )
 
     # =====================================================
-    # LOAD ANH
+    # LOAD ẢNH
     # =====================================================
 
     def _load_item_image(self, path, size):
@@ -495,7 +607,7 @@ class ForestScene(BaseScene):
         )
 
     # =====================================================
-    # NHAN VAT
+    # NHÂN VẬT
     # =====================================================
 
     def _update_walk(self, dt):
@@ -530,16 +642,16 @@ class ForestScene(BaseScene):
         if image is None:
             return
 
-        image = scale_keep_ratio(image, (235, 300))
+        image = scale_keep_ratio(image, (310, 390))
 
         if side == "left":
             rect = image.get_rect(
-                midbottom=(170, self.h - 145)
+                midbottom=(175, STANDARD_DIALOG_RECT.top + 10)
             )
         else:
             image = pygame.transform.flip(image, True, False)
             rect = image.get_rect(
-                midbottom=(self.w - 155, self.h - 145)
+                midbottom=(self.w - 175, STANDARD_DIALOG_RECT.top + 10)
             )
 
         screen.blit(image, rect)
@@ -552,7 +664,7 @@ class ForestScene(BaseScene):
         rect = image.get_rect(midbottom=center)
         screen.blit(image, rect)
 
-    def _spirit(self, screen, expression, center, size=(235, 270)):
+    def _spirit(self, screen, expression, center, size=(300, 340)):
         image = self.spirits.get(expression)
 
         if image is None:
@@ -562,10 +674,31 @@ class ForestScene(BaseScene):
             return
 
         image = scale_keep_ratio(image, size)
-        screen.blit(image, image.get_rect(center=center))
+
+        glow = pygame.mask.from_surface(image).to_surface(
+            setcolor=(235, 255, 235, 100),
+            unsetcolor=(0, 0, 0, 0)
+        )
+
+        for _ in range(3):
+            glow = pygame.transform.smoothscale(
+                glow,
+                (
+                    glow.get_width() + 18,
+                    glow.get_height() + 18,
+                )
+            )
+
+        glow.set_alpha(90)
+
+        rect = image.get_rect(center=center)
+        glow_rect = glow.get_rect(center=center)
+
+        screen.blit(glow, glow_rect)
+        screen.blit(image, rect)
 
     # =====================================================
-    # SUONG
+    # SƯƠNG
     # =====================================================
 
     def _mist(self, screen):
@@ -641,6 +774,7 @@ class ForestScene(BaseScene):
             )
 
             echo.set_alpha(alpha)
+
             screen.blit(
                 echo,
                 echo.get_rect(
@@ -678,11 +812,10 @@ class ForestScene(BaseScene):
         )
 
     # =====================================================
-    # HIEN THI VAT PHAM
+    # VẬT PHẨM
     # =====================================================
 
     def _draw_item_reveal(self, screen, kind):
-        # Nen toi de lam noi bat vat pham.
         shade = pygame.Surface(self.screen_size, pygame.SRCALPHA)
         shade.fill((0, 0, 0, 215))
         screen.blit(shade, (0, 0))
@@ -710,7 +843,6 @@ class ForestScene(BaseScene):
             2,
         )
 
-        # Cac tia sang xoay quanh vat pham.
         for i in range(8):
             angle = self.item_reveal_time * 0.7 + i * math.pi / 4
 
@@ -729,17 +861,11 @@ class ForestScene(BaseScene):
 
         screen.blit(glow, (0, 0))
 
-        if kind == "scale":
-            image = self.scale_image
-            title = "Vảy rồng"
-            subtitle = "Dấu vết dẫn đến hang rồng"
-        else:
-            image = self.gem_image
-            title = "Đá chúc phúc tinh linh"
-            subtitle = "Đã nhận bảo hộ kháng khí độc"
+        image = self.gem_image
+        item_title = "Đá chúc phúc tinh linh"
+        subtitle = "Đã nhận bảo hộ kháng khí độc"
 
         if image is not None:
-            # Phong to nhe theo nhip sang.
             display_size = int(300 + pulse * 12)
             display = scale_keep_ratio(
                 image, (display_size, display_size)
@@ -748,13 +874,6 @@ class ForestScene(BaseScene):
             rect = display.get_rect(center=(cx, cy))
             screen.blit(display, rect)
         else:
-            # Hinh du phong neu khong tim thay file anh.
-            color = (
-                (105, 150, 115)
-                if kind == "scale"
-                else (75, 205, 170)
-            )
-
             points = [
                 (cx, cy - 100),
                 (cx + 65, cy - 40),
@@ -764,13 +883,15 @@ class ForestScene(BaseScene):
                 (cx - 65, cy - 40),
             ]
 
-            pygame.draw.polygon(screen, color, points)
+            pygame.draw.polygon(
+                screen, (75, 205, 170), points
+            )
             pygame.draw.polygon(
                 screen, (230, 245, 190), points, 3
             )
 
         self._text(
-            screen, title, self.heading, GOLD,
+            screen, item_title, self.heading, GOLD,
             (cx, cy + 185),
         )
 
@@ -787,20 +908,22 @@ class ForestScene(BaseScene):
             (self.w // 2, self.h - 35),
         )
 
-    # =====================================================
-    # CHUYEN HOI THOAI
-    # =====================================================
-
     def _start_item_reveal(self, kind):
+        if kind == "gem" and not self.has_dragon_scale:
+            return
+
         self.item_reveal_kind = kind
         self.item_reveal_time = 0.0
         self.reveal_return_scene = "dialog"
 
-        if kind == "scale":
-            self.scene = "scale_reveal"
-        else:
-            self.scene = "gem_reveal"
+        self.scene = "gem_reveal"
+
+        if kind == "gem":
             self._grant_blessing()
+
+    # =====================================================
+    # CHUYỂN HỘI THOẠI
+    # =====================================================
 
     def _next(self):
         if self.scene == "approach":
@@ -809,6 +932,10 @@ class ForestScene(BaseScene):
             self.char_progress = 0.0
 
         elif self.scene == "intro_dialog":
+            if not (0 <= self.dialog_index < len(self.intro_dialogs)):
+                self.scene = "puzzle_intro"
+                return
+
             line = self.intro_dialogs[self.dialog_index][1]
 
             if self.char_progress < len(line):
@@ -846,12 +973,8 @@ class ForestScene(BaseScene):
             self.dialog_index = 0
             self.char_progress = 0.0
 
-        elif self.scene in ("scale_reveal", "gem_reveal"):
-            if self.scene == "scale_reveal":
-                self.scale_revealed = True
-            else:
-                self.gem_revealed = True
-
+        elif self.scene == "gem_reveal":
+            self.gem_revealed = True
             self.scene = self.reveal_return_scene
             self.char_progress = 0.0
 
@@ -862,7 +985,6 @@ class ForestScene(BaseScene):
 
             line = self.dialogs[self.dialog_index][1]
 
-            # Neu chu chua hien het, lan nhan dau chi hien het chu.
             if self.char_progress < len(line):
                 self.char_progress = len(line)
                 return
@@ -870,17 +992,9 @@ class ForestScene(BaseScene):
             self.dialog_index += 1
             self.char_progress = 0.0
 
-            # Hiep si vua dua vay rong: hien vat pham.
             if (
-                self.dialog_index == 4
-                and not self.scale_revealed
-            ):
-                self._start_item_reveal("scale")
-                return
-
-            # Tinh linh trao da: hien da va kich hoat bao ho.
-            if (
-                self.dialog_index == 7
+                self.has_dragon_scale
+                and self.dialog_index == 7
                 and not self.gem_revealed
             ):
                 self._start_item_reveal("gem")
@@ -892,6 +1006,14 @@ class ForestScene(BaseScene):
         elif self.scene == "ending":
             self.finished = True
 
+            # Chưa có vảy rồng:
+            # Giữ nguyên màn hình Forest để người chơi mở bản đồ.
+            if not self.has_dragon_scale:
+                self._mark_reset_when_reentering()
+
+    # =====================================================
+    # INPUT
+    # =====================================================
 
     def handle_event(self, event):
         if super().handle_event(event):
@@ -902,6 +1024,11 @@ class ForestScene(BaseScene):
                 self.puzzle.handle_event(event)
             return
 
+        # Khi đã hoàn thành nhánh không có vảy rồng,
+        # không cho click làm thay đổi màn hình ending.
+        if self.finished and not self.has_dragon_scale:
+            return
+
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 self._next()
@@ -910,8 +1037,25 @@ class ForestScene(BaseScene):
             if event.button == 1:
                 self._next()
 
+    # =====================================================
+    # UPDATE
+    # =====================================================
 
     def update(self, dt):
+        # Nhánh không có vảy rồng:
+        # Giữ nguyên màn hình ending, chờ người chơi mở bản đồ.
+        if self.finished and not self.has_dragon_scale:
+            return
+
+        # Nhánh có vảy rồng:
+        # Kết thúc hội thoại thì chuyển sang Đầm Lầy Độc.
+        if self.finished and self.has_dragon_scale:
+            if not self.transitioned:
+                self.transitioned = True
+                self.game.change_scene("poison_swamp")
+
+            return
+
         self.timer += dt
 
         if self.scene == "approach":
@@ -937,6 +1081,9 @@ class ForestScene(BaseScene):
                 self.puzzle_done_time += dt
 
                 if self.puzzle_done_time > 1.6:
+                    # Kiểm tra túi đồ ngay sau khi hoàn thành puzzle.
+                    self._select_story_branch()
+
                     self.scene = "spirit_reveal"
                     self.timer = 0.0
 
@@ -949,7 +1096,7 @@ class ForestScene(BaseScene):
                     self.char_progress + dt * 35,
                 )
 
-        elif self.scene in ("scale_reveal", "gem_reveal"):
+        elif self.scene == "gem_reveal":
             self.item_reveal_time += dt
 
     # =====================================================
@@ -994,15 +1141,16 @@ class ForestScene(BaseScene):
         elif self.scene == "intro_dialog":
             self._mist(screen)
 
-            speaker, text = self.intro_dialogs[self.dialog_index]
+            if 0 <= self.dialog_index < len(self.intro_dialogs):
+                speaker, text = self.intro_dialogs[self.dialog_index]
 
-            self._draw_dialog_knight(screen, "left")
+                self._draw_dialog_knight(screen, "left")
 
-            self._dialog(
-                screen,
-                speaker,
-                text[:int(self.char_progress)],
-            )
+                self._dialog(
+                    screen,
+                    speaker,
+                    text[:int(self.char_progress)],
+                )
 
         elif self.scene == "echo":
             self._draw_echo(screen)
@@ -1081,7 +1229,7 @@ class ForestScene(BaseScene):
                 screen,
                 "surprised",
                 center,
-                (255, 295),
+                (300, 350),
             )
 
             self._text(
@@ -1101,29 +1249,36 @@ class ForestScene(BaseScene):
             )
 
         elif self.scene == "dialog":
+            if not (0 <= self.dialog_index < len(self.dialogs)):
+                self.scene = "ending"
+                self.draw(screen)
+                return
+
             shade = pygame.Surface(self.screen_size, pygame.SRCALPHA)
             shade.fill((0, 0, 0, 45))
             screen.blit(shade, (0, 0))
 
             speaker, text, expression = self.dialogs[self.dialog_index]
 
+            spirit_center = (
+                self.w - 260,
+                self.h // 2 - 125
+            )
+
             self._spirit(
                 screen,
                 expression,
-                (self.w // 2 - 300, self.h // 2 - 80),
-                (255, 295),
+                spirit_center,
+                (310, 360),
             )
 
-            self._draw_dialog_knight(screen, "right")
+            self._draw_dialog_knight(screen, "left")
 
             self._dialog(
                 screen,
                 speaker,
                 text[:int(self.char_progress)],
             )
-
-        elif self.scene == "scale_reveal":
-            self._draw_item_reveal(screen, "scale")
 
         elif self.scene == "gem_reveal":
             self._draw_item_reveal(screen, "gem")
@@ -1138,9 +1293,19 @@ class ForestScene(BaseScene):
                 (self.w // 2, self.h - 170),
             )
 
+            if self.has_dragon_scale:
+                ending_title = "Đá chúc phúc tinh linh"
+                ending_text = "Bạn đã nhận được đá chúc phúc tinh linh."
+            else:
+                ending_title = "Lối về thị trấn"
+                ending_text = (
+                    "Tinh linh đã chỉ cho bạn con đường "
+                    "qua suối và xuyên qua cánh rừng."
+                )
+
             self._text(
                 screen,
-                "Đá chúc phúc tinh linh",
+                ending_title,
                 self.heading,
                 GOLD,
                 (self.w // 2, 80),
@@ -1148,40 +1313,63 @@ class ForestScene(BaseScene):
 
             self._text(
                 screen,
-                "Bạn đã nhận được đá chúc phúc tinh linh.",
+                ending_text,
                 self.font,
                 WHITE,
                 (self.w // 2, self.h - 130),
             )
 
+            if self.has_dragon_scale:
+                ending_destination = "Tiếp tục đến Đầm Lầy Độc"
+            else:
+                ending_destination = "Mở bản đồ để quay về Hoàng cung"
+
             self._text(
                 screen,
-                "Điểm đến tiếp theo: Đầm lầy độc",
+                ending_destination,
                 self.font,
                 GOLD,
                 (self.w // 2, self.h - 90),
             )
 
+            if self.has_dragon_scale:
+                instruction = "Click để tiếp tục"
+            else:
+                instruction = "Mở bản đồ để chọn địa điểm"
+
             self._text(
                 screen,
-                "Click để tiếp tục",
+                instruction,
                 self.small,
                 WHITE,
                 (self.w // 2, self.h - 40),
             )
+
         super().draw(screen)
+
+    # =====================================================
+    # SCENE CONTROL
+    # =====================================================
 
     def is_finished(self):
         return self.finished
 
     def reset(self):
-        """Recreate forest progress when starting a fresh playthrough."""
+        """
+        Reset riêng ForestScene.
+        Không xóa inventory hoặc dữ liệu game_state.
+        """
         self.__init__(self.game)
 
     def get_next_scene(self):
-        if self.finished:
-            return "swamp"
+        if not self.finished:
+            return None
 
+        if self.has_dragon_scale:
+            return "poison_swamp"
+
+        # Không tự chuyển về princess_room.
+        # Người chơi sẽ mở bản đồ và tự chọn Hoàng cung.
         return None
 
 
