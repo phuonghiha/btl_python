@@ -205,6 +205,9 @@ class BaseScene(Scene):
         pygame.draw.rect(
             screen, (145, 48, 39), self.restart_button_rect, border_radius=8
         )
+        pygame.draw.rect(
+            screen, GOLD, self.restart_button_rect, 2, border_radius=8
+        )
         restart_label = self._button_font.render("Chơi lại", True, WHITE)
         screen.blit(
             restart_label,
@@ -226,7 +229,7 @@ class BaseScene(Scene):
             title_image = self._scene_name_font.render(title, True, WHITE)
             screen.blit(title_image, (20, 10))
 
-        bar = pygame.Rect(20, 48, 222, 24)
+        bar = pygame.Rect(20, 38, 222, 24)
         pygame.draw.rect(screen, DARK_BROWN, bar, border_radius=6)
         max_health = max(1, self.game_state.max_health)
         ratio = max(0.0, min(1.0, self.game_state.health / max_health))
@@ -436,11 +439,13 @@ class BaseScene(Scene):
         return lines or [""]
 
     def _draw_button(
-        self, screen, rect, label, emphasized, border_color=None, text_color=None
+        self, screen, rect, label, emphasized, border_color=GOLD, text_color=None
     ):
         fill = (119, 77, 44) if emphasized else (226, 207, 170)
         if text_color is None:
             text_color = WHITE if emphasized else DARK_BROWN
         pygame.draw.rect(screen, fill, rect, border_radius=8)
+        if border_color is not None:
+            pygame.draw.rect(screen, border_color, rect, 2, border_radius=8)
         text = self._button_font.render(label, True, text_color)
         screen.blit(text, text.get_rect(center=rect.center))

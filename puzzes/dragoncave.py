@@ -1,6 +1,8 @@
 import pygame
 import random
 import math
+from pathlib import Path
+from game_fonts import content1, title
 
 
 class DragonBlockGame:
@@ -18,45 +20,87 @@ class DragonBlockGame:
 
     MAX_HP = 100
 
-    COLORS = [
-        (235, 95, 95),
-        (95, 165, 235),
-        (105, 205, 125),
-        (225, 185, 80),
-        (180, 115, 225),
-        (80, 205, 195),
-    ]
+    # Match each piece color to its fixed length: white=1, green=2,
+    # red=3, yellow=4.
+    PIECE_TYPES = {
+        "white": {"length": 1, "color": (248, 239, 222)},
+        "green": {"length": 2, "color": (112, 148, 112)},
+        "red": {"length": 3, "color": (198, 64, 50)},
+        "yellow": {"length": 4, "color": (255, 190, 48)},
+    }
+    COLORS = {
+        piece_type["length"]: piece_type["color"]
+        for piece_type in PIECE_TYPES.values()
+    }
+    SWORD_DAMAGE = {1: 12, 2: 27, 3: 45, 4: 60}
+    NO_SWORD_DAMAGE = {1: 2, 2: 4, 3: 6, 4: 8}
+    DRAGON_ATTACK_MISSES = 2
+    DRAGON_SHIELD_THRESHOLDS = (70, 50, 30)
 
-    def __init__(self, width=1400, height=900):
-        pygame.init()
+    def __init__(self, screen, sword=True, game_state=None):
+        self.screen = screen
+        self.game_state = game_state
+        self.width, self.height = screen.get_size()
+        self.ui_scale = min(self.width / 1400, self.height / 900)
+        self.CELL = max(40, int(68 * self.ui_scale))
+        self.BOARD_X = int(self.width * 0.46 - self.COLS * self.CELL / 2)
+        self.BOARD_Y = int(190 * self.ui_scale)
+        dragon_image_path = (
+            Path(__file__).resolve().parents[1]
+            / "assets"
+            / "images"
+            / "sence_4"
+            / "dragonchibi.png"
+        )
+        self.dragon_image = pygame.image.load(
+            str(dragon_image_path)
+        ).convert_alpha()
+        character_size = max(100, int(170 * self.ui_scale))
+        self.dragon_image = pygame.transform.smoothscale(
+            self.dragon_image,
+            (character_size, character_size)
+        )
+        knight_image_path = (
+            Path(__file__).resolve().parents[1]
+            / "assets"
+            / "sprites"
+            / "knight"
+            / "front"
+            / "1.png"
+        )
+        self.knight_image = pygame.image.load(
+            str(knight_image_path)
+        ).convert_alpha()
+        self.knight_image = pygame.transform.smoothscale(
+            self.knight_image,
+            (character_size, character_size),
+        )
+        self.dragon_attack_flash_timer = 0
 
-        self.width = width
-        self.height = height
+        self.font_big = title(max(24, int(34 * self.ui_scale)))
+        self.font = content1(max(16, int(22 * self.ui_scale)))
+        self.font_small = content1(max(13, int(18 * self.ui_scale)))
 
-        self.screen = pygame.display.set_mode((width, height))
-        pygame.display.set_caption("Dragon Cave - Wooden Block Battle")
-
-        self.clock = pygame.time.Clock()
-
-        self.font_big = pygame.font.SysFont("arial", 34, bold=True)
-        self.font = pygame.font.SysFont("arial", 22, bold=True)
-        self.font_small = pygame.font.SysFont("arial", 18)
-
-        self.running = True
         self.game_over = False
         self.win = False
 
-        self.knight_hp = self.MAX_HP
+        self.knight_hp = min(
+            self.MAX_HP,
+            getattr(game_state, "health", self.MAX_HP),
+        )
         self.dragon_hp = self.MAX_HP
 
         self.dragon_shield = False
         self.shield_level = None
+        self.activated_shield_levels = set()
         self.dragon_defense_done = False
 
-        self.sword = True
+        self.sword = sword
 
         self.turn = 0
-        self.dragon_attack_every = 3
+        self.failed_turns = 0
+        self.dragon_attacks_received = 0
+        self.rows_cleared_this_attack = 0
 
         self.board = [
             [None for _ in range(self.COLS)]
@@ -81,8 +125,11 @@ class DragonBlockGame:
         self.create_initial_board()
 
     def new_piece(self, length, row, col, color=None):
-        if color is None:
-            color = random.choice(self.COLORS)
+        if length not in self.COLORS:
+            raise ValueError(f"Unsupported piece length: {length}")
+
+        # The color always follows the length, even when a caller supplies a color.
+        color = self.COLORS[length]
 
         piece = {
             "id": self.next_piece_id,
@@ -149,22 +196,14 @@ class DragonBlockGame:
 
         self.next_piece_id = 1
 
-        for row in range(self.ROWS - 3, self.ROWS):
-            count = random.randint(2, 4)
-
-            cols = random.sample(
-                range(self.COLS),
-                count
-            )
-
-            for col in cols:
-                piece = self.new_piece(
-                    1,
-                    row,
-                    col
-                )
-
-                self.place_piece(piece)
+        starting_pieces = [
+            (4, self.ROWS - 1, 0),
+            (1, self.ROWS - 1, 6),
+            (3, self.ROWS - 2, 0),
+            (2, self.ROWS - 2, 5),
+        ]
+        for length, row, col in starting_pieces:
+            self.place_piece(self.new_piece(length, row, col))
 
         self.rebuild_piece_cells()
         self.apply_gravity()
@@ -185,26 +224,14 @@ class DragonBlockGame:
         return [1, 2, 3, 4], 3, 4
 
     def random_piece_length(self):
-        if self.turn <= 2:
-            return 1
-
-        if self.turn <= 5:
-            return random.choices(
-                [1, 2],
-                weights=[75, 25],
-                k=1
-            )[0]
-
-        if self.turn <= 8:
-            return random.choices(
-                [1, 2, 3],
-                weights=[60, 32, 8],
-                k=1
-            )[0]
-
+        lengths = [1, 2, 3, 4]
+        if self.sword:
+            weights = [42, 30, 20, 8]
+        else:
+            weights = [48, 30, 17, 5]
         return random.choices(
-            [1, 2, 3, 4],
-            weights=[55, 32, 10, 3],
+            lengths,
+            weights=weights,
             k=1
         )[0]
 
@@ -251,7 +278,7 @@ class DragonBlockGame:
             preview.append({
                 "col": col,
                 "length": length,
-                "color": random.choice(self.COLORS),
+                "color": self.COLORS[length],
             })
 
         self.next_row_preview = preview
@@ -400,7 +427,7 @@ class DragonBlockGame:
                 self.animation = None
 
                 self.start_message(
-                    "Các khối đã chạm đỉnh! THUA",
+                    "Các khối đã chạm đỉnh! Bạn thua rồi!",
                     3000
                 )
 
@@ -461,7 +488,8 @@ class DragonBlockGame:
     def start_attack_animation(
         self,
         rows,
-        source
+        source,
+        rows_cleared=None
     ):
         row = rows[len(rows) // 2]
 
@@ -487,6 +515,7 @@ class DragonBlockGame:
             "type": "attack",
             "time": 0,
             "source": source,
+            "rows_cleared": rows_cleared or len(rows),
             "start": (sx, sy),
             "end": (ex, ey),
         }
@@ -499,6 +528,16 @@ class DragonBlockGame:
         cells = piece["cells"]
 
         row = cells[0][0]
+        start_col = min(c for _, c in cells)
+
+        if not self.can_slide_piece(
+            row,
+            start_col,
+            target_col,
+            piece["length"],
+            piece["id"]
+        ):
+            return False
 
         old_cells = list(cells)
 
@@ -536,6 +575,28 @@ class DragonBlockGame:
 
         return True
 
+    def can_slide_piece(
+        self,
+        row,
+        start_col,
+        target_col,
+        length,
+        piece_id
+    ):
+        if not 0 <= target_col <= self.COLS - length:
+            return False
+
+        direction = 1 if target_col > start_col else -1
+        positions = range(
+            start_col + direction,
+            target_col + direction,
+            direction
+        )
+        return all(
+            self.can_place(row, col, length, piece_id)
+            for col in positions
+        )
+
     def player_move_finished(self):
         self.rebuild_piece_cells()
 
@@ -547,6 +608,8 @@ class DragonBlockGame:
         rows = self.get_full_rows()
 
         if rows:
+            self.failed_turns = 0
+            self.rows_cleared_this_attack = 0
             self.start_clear_animation(
                 rows,
                 "player"
@@ -554,6 +617,7 @@ class DragonBlockGame:
 
             return
 
+        self.failed_turns += 1
         self.finish_player_turn()
 
     def finish_player_turn(self):
@@ -640,6 +704,7 @@ class DragonBlockGame:
         rows = self.get_full_rows()
 
         if rows:
+            self.rows_cleared_this_attack = 0
             self.start_clear_animation(
                 rows,
                 "player"
@@ -647,10 +712,9 @@ class DragonBlockGame:
 
             return
 
-        if (
-            self.turn > 0
-            and self.turn % self.dragon_attack_every == 0
-        ):
+        attack_threshold = self.DRAGON_ATTACK_MISSES
+        if self.failed_turns >= attack_threshold:
+            self.failed_turns = 0
             self.dragon_attack()
             return
 
@@ -717,125 +781,117 @@ class DragonBlockGame:
         self.apply_gravity()
 
     def player_attack(self):
-        damage = 10 if self.sword else 5
+        rows_cleared = self.rows_cleared_this_attack
+        if rows_cleared <= 0:
+            return
+
+        damage_table = self.SWORD_DAMAGE if self.sword else self.NO_SWORD_DAMAGE
+        damage = damage_table.get(rows_cleared, max(damage_table.values()))
 
         if self.dragon_shield:
+            blocked_level = self.shield_level
+            self.dragon_shield = False
+            self.shield_level = None
+            self.failed_turns = 0
+            self.rows_cleared_this_attack = 0
             self.start_message(
-                "Khiên rồng chặn đòn tấn công!",
-                1200
+                f"Khiên rồng mốc {blocked_level}% đã chặn đòn!",
+                1400,
             )
-
             return
 
         old_hp = self.dragon_hp
+        next_thresholds = [
+            level
+            for level in self.DRAGON_SHIELD_THRESHOLDS
+            if level not in self.activated_shield_levels and level < old_hp
+        ]
+        if next_thresholds:
+            next_threshold = max(next_thresholds)
+            if old_hp - damage < next_threshold:
+                damage = old_hp - next_threshold
 
-        self.dragon_hp = max(
-            0,
-            self.dragon_hp - damage
-        )
+        self.dragon_hp = max(0, self.dragon_hp - damage)
+        self.check_shield_activation(old_hp)
 
-        self.check_shield_activation(
-            old_hp
-        )
+        self.failed_turns = 0
+        self.rows_cleared_this_attack = 0
 
-        if self.dragon_hp <= 0:
+        if self.dragon_hp == 0:
             self.win = True
             self.game_over = True
-
-            self.start_message(
-                "RỒNG BỊ ĐÁNH BẠI!",
-                4000
-            )
-
-        else:
-            self.start_message(
-                f"Hiệp sĩ gây {damage} sát thương!",
-                900
-            )
-
+            if self.game_state is not None:
+                self.game_state.dragon_defeated = True
+            self.start_message("RỒNG ĐÃ BỊ ĐÁNH BẠI!", 4000)
+        elif not self.dragon_shield:
+            self.start_message(f"Hiệp sĩ gây {damage} sát thương!", 900)
     def check_shield_activation(
         self,
         old_hp
     ):
-        shield_levels = [
-            70,
-            50,
-            15,
-            5
-        ]
-
-        for level in shield_levels:
-            if old_hp > level >= self.dragon_hp:
-                if self.shield_level != level:
-                    self.dragon_shield = True
-                    self.shield_level = level
-
-                    self.start_message(
-                        f"Rồng chạm mốc {level}% HP - KHIÊN ĐƯỢC KÍCH HOẠT!",
-                        1600
-                    )
-
-                    return
+        for level in self.DRAGON_SHIELD_THRESHOLDS:
+            if (
+                old_hp > level >= self.dragon_hp
+                and level not in self.activated_shield_levels
+            ):
+                self.activated_shield_levels.add(level)
+                self.dragon_shield = True
+                self.shield_level = level
+                self.start_message(
+                    f"Rồng còn {level}% máu - khiên đã kích hoạt!",
+                    1600,
+                )
+                return
 
     def dragon_attack_result(self):
         if self.dragon_defense_done:
             return
 
         self.dragon_defense_done = True
+        damage = 15 if self.sword else 25
+        self.knight_hp = max(0, self.knight_hp - damage)
+        if self.game_state is not None:
+            self.game_state.take_damage(damage)
 
-        if self.sword:
-            if self.dragon_shield:
-                self.dragon_shield = False
-                self.shield_level = None
-
-                self.start_message(
-                    "Phòng thủ thành công! Khiên rồng bị phá!",
-                    1400
-                )
-
-            else:
-                self.start_message(
-                    "Phòng thủ thành công! Không mất HP.",
-                    1100
-                )
-
-        else:
-            self.knight_hp = max(
-                0,
-                self.knight_hp - 20
-            )
-
-            self.start_message(
-                "Không có Holy Sword: rồng gây 20 sát thương!",
-                1400
-            )
-
-            if self.knight_hp <= 0:
-                self.game_over = True
-                self.win = False
-
-                self.start_message(
-                    "HIỆP SĨ ĐÃ THẤT BẠI!",
-                    3000
-                )
+        self.start_message(f"Rồng tấn công! Hiệp sĩ mất {damage} máu!", 1400)
+        if self.knight_hp <= 0:
+            self.game_over = True
+            self.win = False
+            self.start_message("HIỆP SĨ ĐÃ THẤT BẠI!", 3000)
 
     def finish_clear_animation(self):
         rows = self.animation["rows"]
         source = self.animation["source"]
 
+        if source == "player":
+            self.failed_turns = 0
+            self.rows_cleared_this_attack += len(rows)
+
         self.clear_rows(rows)
+        self.animation = None
+
+        cascade_rows = self.get_full_rows()
+        if cascade_rows:
+            self.start_clear_animation(cascade_rows, source)
+            return
 
         self.add_blocks_until_three_rows()
-
-        self.animation = None
+        cascade_rows = self.get_full_rows()
+        if cascade_rows:
+            self.start_clear_animation(cascade_rows, source)
+            return
 
         self.start_attack_animation(
             rows,
-            source
+            source,
+            self.rows_cleared_this_attack
+            if source == "player"
+            else len(rows),
         )
 
     def finish_attack_animation(self):
         source = self.animation["source"]
+        self.rows_cleared_this_attack = self.animation["rows_cleared"]
 
         self.animation = None
 
@@ -851,11 +907,6 @@ class DragonBlockGame:
             self.finish_player_turn()
 
         else:
-            self.dragon_attack_result()
-
-            if self.game_over:
-                return
-
             self.finish_dragon_attack()
 
     def find_dragon_attack_position(self):
@@ -890,116 +941,70 @@ class DragonBlockGame:
 
     def dragon_attack(self):
         self.dragon_defense_done = False
+        self.dragon_attacks_received += 1
+        self.dragon_attack_flash_timer = self.ATTACK_TIME
+        block_count = 2 if not self.sword else 1
 
-        pos = self.find_dragon_attack_position()
+        for _ in range(block_count):
+            position = self.find_dragon_attack_position()
+            if position is None:
+                self.game_over = True
+                self.win = False
+                self.animation = None
+                self.start_message("Rồng đã lấp đầy bàn chơi!", 3000)
+                return
 
-        if pos is None:
-            self.game_over = True
-            self.win = False
-
-            self.start_message(
-                "Rồng đã lấp đầy bàn! THUA",
-                3000
-            )
-
-            return
-
-        row, col, length = pos
-
-        piece = self.new_piece(
-            length,
-            row,
-            col,
-            (185, 75, 95)
-        )
-
-        self.place_piece(piece)
-
-        self.rebuild_piece_cells()
+            row, col, length = position
+            self.place_piece(self.new_piece(length, row, col))
+            self.rebuild_piece_cells()
 
         old_positions = {
-            p["id"]: list(p["cells"])
-            for p in self.get_pieces()
+            piece["id"]: list(piece["cells"])
+            for piece in self.get_pieces()
         }
-
         new_positions = self.calculate_gravity_result()
-
-        pieces = {
-            p["id"]: p
-            for p in self.get_pieces()
-        }
-
-        for pid, cells in new_positions.items():
-            pieces[pid]["cells"] = cells
+        pieces = {piece["id"]: piece for piece in self.get_pieces()}
 
         self.board = [
             [None for _ in range(self.COLS)]
             for _ in range(self.ROWS)
         ]
-
-        for p in pieces.values():
-            self.place_piece(p)
-
+        for piece_id, cells in new_positions.items():
+            pieces[piece_id]["cells"] = cells
+            self.place_piece(pieces[piece_id])
         self.rebuild_piece_cells()
 
-        moved = False
-
-        for pid in old_positions:
-            if old_positions[pid] != new_positions.get(
-                pid,
-                old_positions[pid]
-            ):
-                moved = True
-                break
-
-        self.start_message(
-            "Rồng tấn công: thêm khối vào bàn!",
-            1100
+        moved = any(
+            old_positions[piece_id] != new_positions.get(
+                piece_id, old_positions[piece_id]
+            )
+            for piece_id in old_positions
         )
+        self.start_message("Rồng đẩy thêm khối vào bàn chơi!", 1100)
 
         if moved:
-            self.start_fall_animation(
-                old_positions,
-                new_positions,
-                "dragon"
-            )
+            self.start_fall_animation(old_positions, new_positions, "dragon")
+            return
 
+        rows = self.get_full_rows()
+        if rows:
+            self.start_clear_animation(rows, "dragon")
         else:
-            rows = self.get_full_rows()
-
-            if rows:
-                self.start_clear_animation(
-                    rows,
-                    "dragon"
-                )
-
-            else:
-                self.finish_dragon_attack()
-
+            self.finish_dragon_attack()
     def finish_dragon_attack(self):
         if self.check_top():
             return
 
         rows = self.get_full_rows()
-
         if rows:
-            self.start_clear_animation(
-                rows,
-                "dragon"
-            )
-
+            self.start_clear_animation(rows, "dragon")
             return
 
         self.dragon_attack_result()
-
         if self.game_over:
             return
-
-        self.start_message(
-            "Đến lượt bạn",
-            900
-        )
-
+        if self.message_timer <= 0:
+            self.start_message("Đến lượt bạn", 900)
     def update_animation(
         self,
         dt
@@ -1163,8 +1168,10 @@ class DragonBlockGame:
             )
         )
 
-        if self.can_place(
+        start_col = min(c for _, c in piece["cells"])
+        if self.can_slide_piece(
             row,
+            start_col,
             target_col,
             piece["length"],
             piece["id"]
@@ -1203,6 +1210,7 @@ class DragonBlockGame:
         self,
         dt
     ):
+        dt *= 1000
         if self.message_timer > 0:
             self.message_timer -= dt
 
@@ -1210,6 +1218,24 @@ class DragonBlockGame:
                 self.message_timer = 0
 
         self.update_animation(dt)
+        self.dragon_attack_flash_timer = max(
+            0,
+            self.dragon_attack_flash_timer - dt,
+        )
+
+    def handle_event(self, event):
+        if (
+            event.type == pygame.MOUSEBUTTONDOWN
+            and event.button == 1
+        ):
+            self.mouse_down(event.pos)
+        elif event.type == pygame.MOUSEMOTION:
+            self.mouse_motion(event.pos)
+        elif (
+            event.type == pygame.MOUSEBUTTONUP
+            and event.button == 1
+        ):
+            self.mouse_up()
 
     def draw_block(
         self,
@@ -1258,9 +1284,9 @@ class DragonBlockGame:
         pygame.draw.rect(
             surface,
             (
-                40,
-                30,
-                25,
+                61,
+                19,
+                5,
                 min(alpha, 130)
             ),
             (
@@ -1278,8 +1304,8 @@ class DragonBlockGame:
                 surface,
                 (
                     255,
-                    245,
-                    130,
+                    112,
+                    25,
                     alpha
                 ),
                 (
@@ -1307,14 +1333,14 @@ class DragonBlockGame:
 
         pygame.draw.rect(
             self.screen,
-            (35, 28, 24),
+            (61, 19, 5),
             board_rect,
             border_radius=12
         )
 
         pygame.draw.rect(
             self.screen,
-            (110, 80, 55),
+            (177, 92, 64),
             board_rect,
             4,
             border_radius=12
@@ -1335,7 +1361,7 @@ class DragonBlockGame:
 
                 pygame.draw.rect(
                     self.screen,
-                    (55, 45, 38),
+                    (207, 177, 158),
                     rect,
                     1,
                     border_radius=6
@@ -1348,22 +1374,18 @@ class DragonBlockGame:
         selected=False,
         alpha=255
     ):
-        for r, c in cells:
-            rect = pygame.Rect(
-                self.BOARD_X
-                + int(c * self.CELL),
-                self.BOARD_Y
-                + int(r * self.CELL),
-                self.CELL,
-                self.CELL
-            )
+        if not cells:
+            return
 
-            self.draw_block(
-                rect,
-                piece["color"],
-                selected,
-                alpha
-            )
+        rows = [r for r, _ in cells]
+        cols = [c for _, c in cells]
+        rect = pygame.Rect(
+            self.BOARD_X + min(cols) * self.CELL,
+            self.BOARD_Y + min(rows) * self.CELL,
+            (max(cols) - min(cols) + 1) * self.CELL,
+            (max(rows) - min(rows) + 1) * self.CELL
+        )
+        self.draw_block(rect, piece["color"], selected, alpha)
 
     def draw_dragging_piece(self):
         if self.selected_piece is None:
@@ -1376,47 +1398,25 @@ class DragonBlockGame:
 
         row = piece["cells"][0][0]
 
-        x = (
-            self.drag_mouse_x
-            - self.drag_offset
+        target_col = (
+            self.drag_current_col
+            if self.drag_current_col is not None
+            else min(c for _, c in piece["cells"])
         )
-
-        min_x = self.BOARD_X
-
-        max_x = (
-            self.BOARD_X
-            + self.COLS * self.CELL
-            - piece["length"] * self.CELL
-        )
-
-        x = max(
-            min_x,
-            min(max_x, x)
-        )
+        x = self.BOARD_X + target_col * self.CELL
 
         y = (
             self.BOARD_Y
             + row * self.CELL
         )
 
-        for i in range(
-            piece["length"]
-        ):
-            rect = pygame.Rect(
-                int(
-                    x
-                    + i * self.CELL
-                ),
-                y,
-                self.CELL,
-                self.CELL
-            )
-
-            self.draw_block(
-                rect,
-                piece["color"],
-                True
-            )
+        rect = pygame.Rect(
+            int(x),
+            y,
+            piece["length"] * self.CELL,
+            self.CELL
+        )
+        self.draw_block(rect, piece["color"], True)
 
         if self.drag_current_col is not None:
             target_x = (
@@ -1542,29 +1542,13 @@ class DragonBlockGame:
         if piece is None:
             return
 
-        for i in range(
-            piece["length"]
-        ):
-            rect = pygame.Rect(
-                self.BOARD_X
-                + int(
-                    (
-                        current_col
-                        + i
-                    )
-                    * self.CELL
-                ),
-                self.BOARD_Y
-                + row * self.CELL,
-                self.CELL,
-                self.CELL
-            )
-
-            self.draw_block(
-                rect,
-                piece["color"],
-                True
-            )
+        rect = pygame.Rect(
+            self.BOARD_X + int(current_col * self.CELL),
+            self.BOARD_Y + row * self.CELL,
+            piece["length"] * self.CELL,
+            self.CELL
+        )
+        self.draw_block(rect, piece["color"], True)
 
     def draw_fall_animation(self):
         anim = self.animation
@@ -1599,48 +1583,17 @@ class DragonBlockGame:
             p = pieces[pid]
 
             new_cells = new_positions[pid]
-
-            for i in range(
-                len(old_cells)
-            ):
-                old_r, old_c = old_cells[i]
-                new_r, new_c = new_cells[i]
-
-                r = (
-                    old_r
-                    + (
-                        new_r
-                        - old_r
-                    ) * t
-                )
-
-                c = (
-                    old_c
-                    + (
-                        new_c
-                        - old_c
-                    ) * t
-                )
-
-                rect = pygame.Rect(
-                    self.BOARD_X
-                    + int(
-                        c
-                        * self.CELL
-                    ),
-                    self.BOARD_Y
-                    + int(
-                        r
-                        * self.CELL
-                    ),
-                    self.CELL,
-                    self.CELL
-                )
-
-                self.draw_block(
-                    rect,
-                    p["color"]
-                )
+            old_r, old_c = old_cells[0]
+            new_r, new_c = new_cells[0]
+            r = old_r + (new_r - old_r) * t
+            c = old_c + (new_c - old_c) * t
+            rect = pygame.Rect(
+                self.BOARD_X + int(c * self.CELL),
+                self.BOARD_Y + int(r * self.CELL),
+                len(old_cells) * self.CELL,
+                self.CELL
+            )
+            self.draw_block(rect, p["color"])
 
     def draw_clear_animation(self):
         self.draw_normal_board()
@@ -1711,72 +1664,36 @@ class DragonBlockGame:
             "old_board"
         ]
 
-        drawn = set()
+        pieces = {}
+        for r, row in enumerate(old_board):
+            for c, piece in enumerate(row):
+                if piece is not None:
+                    pieces.setdefault(piece["id"], [piece, []])[1].append((r, c))
 
-        for r in range(self.ROWS):
-            for c in range(self.COLS):
-                p = old_board[r][c]
-
-                if p is None:
-                    continue
-
-                key = (
-                    p["id"],
-                    r,
-                    c
-                )
-
-                if key in drawn:
-                    continue
-
-                drawn.add(key)
-
-                rect = pygame.Rect(
-                    self.BOARD_X
-                    + c * self.CELL,
-                    self.BOARD_Y
-                    + int(
-                        (
-                            r - t
-                        )
-                        * self.CELL
-                    ),
-                    self.CELL,
-                    self.CELL
-                )
-
-                self.draw_block(
-                    rect,
-                    p["color"]
-                )
-
-        for c in range(self.COLS):
-            p = self.board[
-                self.ROWS - 1
-            ][c]
-
-            if p is None:
-                continue
-
+        for piece, cells in pieces.values():
+            row = min(r for r, _ in cells)
+            col = min(c for _, c in cells)
             rect = pygame.Rect(
-                self.BOARD_X
-                + c * self.CELL,
-                self.BOARD_Y
-                + int(
-                    (
-                        self.ROWS
-                        - t
-                    )
-                    * self.CELL
-                ),
-                self.CELL,
+                self.BOARD_X + col * self.CELL,
+                self.BOARD_Y + int((row - t) * self.CELL),
+                len(cells) * self.CELL,
                 self.CELL
             )
+            self.draw_block(rect, piece["color"])
 
-            self.draw_block(
-                rect,
-                p["color"]
+        new_row_pieces = {}
+        for col, piece in enumerate(self.board[self.ROWS - 1]):
+            if piece is not None:
+                new_row_pieces.setdefault(piece["id"], [piece, []])[1].append(col)
+
+        for piece, cols in new_row_pieces.values():
+            rect = pygame.Rect(
+                self.BOARD_X + min(cols) * self.CELL,
+                self.BOARD_Y + int((self.ROWS - t) * self.CELL),
+                len(cols) * self.CELL,
+                self.CELL
             )
+            self.draw_block(rect, piece["color"])
 
     def draw_attack_animation(self):
         self.draw_normal_board()
@@ -1896,124 +1813,28 @@ class DragonBlockGame:
             * self.CELL
             // 2
         )
-
-        cy = (
-            self.BOARD_Y
-            - 65
+        cy = self.BOARD_Y - int(104 * self.ui_scale)
+        image_rect = self.dragon_image.get_rect(
+            center=(cx, cy)
         )
-
-        pygame.draw.ellipse(
-            self.screen,
-            (105, 45, 45),
-            (
-                cx - 72,
-                cy - 38,
-                144,
-                76
-            )
+        self.screen.blit(self.dragon_image, image_rect)
+        bar_width = max(220, int(360 * self.ui_scale))
+        bar_height = max(19, int(28 * self.ui_scale))
+        bar_rect = pygame.Rect(
+            image_rect.centerx - bar_width // 2,
+            image_rect.bottom + int(2 * self.ui_scale),
+            bar_width,
+            bar_height,
         )
-
-        pygame.draw.polygon(
-            self.screen,
-            (135, 55, 55),
-            [
-                (
-                    cx - 58,
-                    cy - 25
-                ),
-                (
-                    cx - 100,
-                    cy - 70
-                ),
-                (
-                    cx - 88,
-                    cy + 5
-                )
-            ]
-        )
-
-        pygame.draw.polygon(
-            self.screen,
-            (135, 55, 55),
-            [
-                (
-                    cx + 58,
-                    cy - 25
-                ),
-                (
-                    cx + 100,
-                    cy - 70
-                ),
-                (
-                    cx + 88,
-                    cy + 5
-                )
-            ]
-        )
-
-        pygame.draw.circle(
-            self.screen,
-            (230, 100, 80),
-            (
-                cx - 27,
-                cy - 5
-            ),
-            8
-        )
-
-        pygame.draw.circle(
-            self.screen,
-            (230, 100, 80),
-            (
-                cx + 27,
-                cy - 5
-            ),
-            8
-        )
-
-        pygame.draw.circle(
-            self.screen,
-            (20, 15, 15),
-            (
-                cx - 27,
-                cy - 5
-            ),
-            3
-        )
-
-        pygame.draw.circle(
-            self.screen,
-            (20, 15, 15),
-            (
-                cx + 27,
-                cy - 5
-            ),
-            3
-        )
+        pygame.draw.rect(self.screen, (61, 19, 5), bar_rect, border_radius=5)
+        fill_rect = bar_rect.inflate(-2, -2)
+        fill_rect.width = round(fill_rect.width * max(0, self.dragon_hp) / self.MAX_HP)
+        if fill_rect.width:
+            pygame.draw.rect(self.screen, (198, 64, 50), fill_rect, border_radius=4)
 
         if self.dragon_shield:
-            pulse = int(
-                5
-                * math.sin(
-                    pygame.time.get_ticks()
-                    / 120
-                )
-            )
-
-            pygame.draw.ellipse(
-                self.screen,
-                (80, 180, 255),
-                (
-                    cx - 93 - pulse,
-                    cy - 59 - pulse,
-                    186 + pulse * 2,
-                    118 + pulse * 2
-                ),
-                5
-            )
-
             text = self.font_small.render(
-                "SHIELD",
+                "KHIÊN",
                 True,
                 (120, 210, 255)
             )
@@ -2023,646 +1844,175 @@ class DragonBlockGame:
                 text.get_rect(
                     center=(
                         cx,
-                        cy - 75
+                        image_rect.top - 18
                     )
                 )
             )
 
     def draw_knight(self):
-        cx = (
-            self.BOARD_X
-            + self.COLS
-            * self.CELL
-            // 2
-        )
+        knight_x = self.BOARD_X + (self.COLS * self.CELL - self.knight_image.get_width()) // 2
+        knight_y = self.BOARD_Y + self.ROWS * self.CELL
+        self.screen.blit(self.knight_image, (knight_x, knight_y))
 
-        cy = (
-            self.BOARD_Y
-            + self.ROWS
-            * self.CELL
-            + 70
-        )
+    def draw_dragon_fire(self):
+        if self.dragon_attack_flash_timer <= 0:
+            return
 
+        center_x = self.BOARD_X + self.COLS * self.CELL // 2
+        start_y = self.BOARD_Y - int(34 * self.ui_scale)
+        end_y = self.BOARD_Y + self.ROWS * self.CELL + int(18 * self.ui_scale)
+        wobble = int(9 * math.sin(pygame.time.get_ticks() / 35))
+        flame = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        outer_width = max(24, int(42 * self.ui_scale))
+        inner_width = max(8, int(15 * self.ui_scale))
+        points = [
+            (center_x - outer_width // 3, start_y),
+            (center_x + outer_width // 3, start_y),
+            (center_x + outer_width // 2 + wobble, end_y - 28),
+            (center_x + outer_width // 2, end_y),
+            (center_x - outer_width // 2, end_y),
+            (center_x - outer_width // 2 + wobble, end_y - 28),
+        ]
+        pygame.draw.polygon(flame, (244, 70, 18, 150), points)
+        pygame.draw.line(
+            flame,
+            (255, 183, 52, 205),
+            (center_x, start_y),
+            (center_x + wobble // 2, end_y),
+            inner_width,
+        )
         pygame.draw.circle(
-            self.screen,
-            (150, 165, 185),
-            (
-                cx,
-                cy - 24
-            ),
-            26
+            flame,
+            (255, 230, 126, 210),
+            (center_x + wobble // 2, end_y - 3),
+            max(12, int(22 * self.ui_scale)),
         )
-
-        pygame.draw.rect(
-            self.screen,
-            (85, 105, 125),
-            (
-                cx - 38,
-                cy,
-                76,
-                55
-            ),
-            border_radius=15
-        )
-
-        pygame.draw.polygon(
-            self.screen,
-            (175, 185, 205),
-            [
-                (
-                    cx - 45,
-                    cy + 8
-                ),
-                (
-                    cx - 92,
-                    cy + 30
-                ),
-                (
-                    cx - 45,
-                    cy + 50
-                )
-            ]
-        )
-
-        if self.sword:
-            pygame.draw.line(
-                self.screen,
-                (245, 245, 230),
-                (
-                    cx + 48,
-                    cy + 35
-                ),
-                (
-                    cx + 98,
-                    cy - 10
-                ),
-                7
-            )
-
-            pygame.draw.line(
-                self.screen,
-                (230, 195, 80),
-                (
-                    cx + 35,
-                    cy + 45
-                ),
-                (
-                    cx + 60,
-                    cy + 20
-                ),
-                6
-            )
-
-    def draw_hp_bar(
-        self,
-        x,
-        y,
-        width,
-        hp,
-        title
-    ):
-        pygame.draw.rect(
-            self.screen,
-            (45, 35, 30),
-            (
-                x,
-                y,
-                width,
-                30
-            ),
-            border_radius=8
-        )
-
-        fill = int(
-            width
-            * hp
-            / self.MAX_HP
-        )
-
-        if hp > 50:
-            color = (
-                75,
-                190,
-                90
-            )
-
-        elif hp > 20:
-            color = (
-                225,
-                180,
-                65
-            )
-
-        else:
-            color = (
-                210,
-                70,
-                70
-            )
-
-        pygame.draw.rect(
-            self.screen,
-            color,
-            (
-                x,
-                y,
-                fill,
-                30
-            ),
-            border_radius=8
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            (220, 220, 220),
-            (
-                x,
-                y,
-                width,
-                30
-            ),
-            2,
-            border_radius=8
-        )
-
-        text = self.font.render(
-            f"{title}: {hp}/100",
-            True,
-            (245, 245, 245)
-        )
-
-        self.screen.blit(
-            text,
-            (
-                x,
-                y - 30
-            )
-        )
-
-    def draw_next_row_preview(self):
-        x = self.width - 380
-        y = 300
-        w = 350
-        h = 170
-
-        panel = pygame.Rect(
-            x,
-            y,
-            w,
-            h
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            (35, 29, 28),
-            panel,
-            border_radius=14
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            (155, 125, 80),
-            panel,
-            2,
-            border_radius=14
-        )
-
-        title = self.font.render(
-            "HÀNG TIẾP THEO",
-            True,
-            (255, 225, 160)
-        )
-
-        self.screen.blit(
-            title,
-            (
-                x + 18,
-                y + 14
-            )
-        )
-
-        preview_x = x + 20
-        preview_y = y + 65
-        cell = 36
-
-        for c in range(self.COLS):
-            rect = pygame.Rect(
-                preview_x
-                + c * cell,
-                preview_y,
-                cell - 3,
-                cell - 3
-            )
-
-            pygame.draw.rect(
-                self.screen,
-                (55, 48, 45),
-                rect,
-                border_radius=5
-            )
-
-        for item in self.next_row_preview:
-            for i in range(
-                item["length"]
-            ):
-                c = (
-                    item["col"]
-                    + i
-                )
-
-                rect = pygame.Rect(
-                    preview_x
-                    + c * cell,
-                    preview_y,
-                    cell - 3,
-                    cell - 3
-                )
-
-                pygame.draw.rect(
-                    self.screen,
-                    item["color"],
-                    rect,
-                    border_radius=5
-                )
-
-                pygame.draw.rect(
-                    self.screen,
-                    (235, 220, 190),
-                    rect,
-                    1,
-                    border_radius=5
-                )
-
-        text = self.font_small.render(
-            "Hàng sẽ xuất hiện sau lượt này",
-            True,
-            (205, 195, 180)
-        )
-
-        self.screen.blit(
-            text,
-            (
-                x + 20,
-                y + 125
-            )
-        )
+        self.screen.blit(flame, (0, 0))
 
     def draw_ui(self):
-        pygame.draw.rect(
-            self.screen,
-            (27, 22, 20),
-            (
-                0,
-                0,
-                self.width,
-                105
-            )
-        )
+        scale = self.ui_scale
+        left_x = self.width - int(385 * scale) - int(24 * scale)
+        left_y = int(160 * scale)
+        left_width = int(385 * scale)
+        left_height = min(int(300 * scale), self.height - left_y - int(20 * scale))
+        left_panel = pygame.Rect(left_x, left_y, left_width, left_height)
+        pygame.draw.rect(self.screen, (177, 92, 64), left_panel, border_radius=12)
+        pygame.draw.rect(self.screen, (239, 139, 118), left_panel, 2, border_radius=12)
 
-        title = self.font_big.render(
-            "DRAGON CAVE",
-            True,
-            (255, 225, 155)
-        )
-
-        self.screen.blit(
-            title,
-            title.get_rect(
-                center=(
-                    self.width // 2,
-                    28
-                )
-            )
-        )
-
-        turn_text = self.font.render(
-            f"LƯỢT {self.turn}",
-            True,
-            (235, 220, 190)
-        )
-
-        self.screen.blit(
-            turn_text,
-            turn_text.get_rect(
-                center=(
-                    self.width // 2,
-                    72
-                )
-            )
-        )
-
-        self.draw_hp_bar(
-            35,
-            65,
-            300,
-            self.knight_hp,
-            "HIỆP SĨ"
-        )
-
-        self.draw_hp_bar(
-            self.width - 385,
-            65,
-            350,
-            self.dragon_hp,
-            "RỒNG"
-        )
-
-        left_panel = pygame.Rect(
-            25,
-            180,
-            385,
-            560
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            (34, 29, 27),
-            left_panel,
-            border_radius=14
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            (125, 100, 70),
-            left_panel,
-            2,
-            border_radius=14
-        )
-
-        heading = self.font.render(
-            "THÔNG TIN TRẬN ĐẤU",
-            True,
-            (255, 220, 155)
-        )
-
-        self.screen.blit(
-            heading,
-            (
-                48,
-                205
-            )
-        )
-
-        sword_text = (
-            "ĐANG CẦM"
-            if self.sword
-            else "KHÔNG CÓ"
-        )
-
-        shield_text = (
-            "ĐANG BẬT"
-            if self.dragon_shield
-            else "TẮT"
-        )
-
-        lines = [
-            f"Holy Sword: {sword_text}",
-            f"Khiên rồng: {shield_text}",
-            "",
-            "Mốc khiên:",
-            "70% - 50% - 15% - 5%",
-            "",
-            "Đánh rồng:",
-            "Có kiếm: 10 sát thương",
-            "Không kiếm: 5 sát thương",
-            "",
-            "Rồng tấn công mỗi 3 lượt",
-            "Có kiếm: phòng thủ",
-            "Có khiên: phá khiên rồng",
-            "Không kiếm: mất 20 HP",
-            "",
-            "H: bật/tắt Holy Sword",
-            "R: chơi lại",
+        heading = self.font.render("TÌNH HÌNH TRẬN ĐẤU", True, (255, 220, 155))
+        self.screen.blit(heading, (left_x + int(18 * scale), left_y + int(16 * scale)))
+        attack_threshold = self.DRAGON_ATTACK_MISSES
+        damage_table = self.SWORD_DAMAGE if self.sword else self.NO_SWORD_DAMAGE
+        mode_lines = [
+            "VŨ KHÍ: THÁNH KIẾM" if self.sword else "VŨ KHÍ: KIẾM THƯỜNG",
+            "SÁT THƯƠNG: CAO" if self.sword else "SÁT THƯƠNG: THẤP",
+            f"RỒNG TẤN CÔNG SAU {attack_threshold} LƯỢT LỠ",
+            f"LƯỢT LỠ: {self.failed_turns}/{attack_threshold}",
+            "KHIÊN RỒNG: ĐANG BẬT" if self.dragon_shield else "KHIÊN RỒNG: ĐANG TẮT",
+            "SÁT THƯƠNG MỖI HÀNG: " + "/".join(str(damage_table.get(i, max(damage_table.values()))) for i in range(1, 5)),
         ]
+        if not self.sword:
+            mode_lines.append("VẢY RỒNG GIỮ MÁU TRÊN 80")
+        line_y = left_y + int(58 * scale)
+        line_gap = max(20, int(29 * scale))
+        for line in mode_lines:
+            text = self.font_small.render(line, True, (248, 239, 222))
+            self.screen.blit(text, (left_x + int(18 * scale), line_y))
+            line_y += line_gap
 
-        y = 250
-
-        for line in lines:
-            color = (
-                220,
-                210,
-                190
-            )
-
-            if (
-                line.startswith(
-                    "Holy Sword"
-                )
-                and self.sword
-            ):
-                color = (
-                    255,
-                    225,
-                    100
-                )
-
-            if (
-                line.startswith(
-                    "Khiên"
-                )
-                and self.dragon_shield
-            ):
-                color = (
-                    120,
-                    210,
-                    255
-                )
-
-            text = self.font_small.render(
-                line,
-                True,
-                color
-            )
-
-            self.screen.blit(
-                text,
-                (
-                    48,
-                    y
-                )
-            )
-
-            y += 28
-
-        self.draw_next_row_preview()
-
-        guide = pygame.Rect(
-            self.width - 380,
-            500,
-            350,
-            240
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            (34, 29, 27),
-            guide,
-            border_radius=14
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            (125, 100, 70),
-            guide,
-            2,
-            border_radius=14
-        )
-
-        title = self.font.render(
-            "CÁCH CHƠI",
-            True,
-            (255, 220, 155)
-        )
-
-        self.screen.blit(
-            title,
-            (
-                guide.x + 20,
-                guide.y + 18
-            )
-        )
-
-        lines = [
-            "Giữ chuột vào một khối",
-            "Kéo trái/phải để di chuyển",
-            "Khối sẽ đi theo chuột",
+        guide_x = left_x
+        guide_y = int(455 * scale)
+        guide_width = left_width
+        guide_height = min(int(225 * scale), self.height - guide_y - int(20 * scale))
+        guide = pygame.Rect(guide_x, guide_y, guide_width, guide_height)
+        pygame.draw.rect(self.screen, (177, 92, 64), guide, border_radius=12)
+        pygame.draw.rect(self.screen, (239, 139, 118), guide, 2, border_radius=12)
+        guide_title = self.font.render("CÁCH CHƠI", True, (255, 220, 155))
+        self.screen.blit(guide_title, (guide.x + int(18 * scale), guide.y + int(14 * scale)))
+        instructions = [
+            "Kéo khối sang trái hoặc phải",
             "Thả chuột để đặt khối",
-            "Khối tự rơi xuống",
-            "Đầy hàng → tấn công rồng",
+            "Lấp đầy hàng để tấn công",
         ]
+        line_y = guide.y + int(48 * scale)
+        for line in instructions:
+            text = self.font_small.render(line, True, (248, 239, 222))
+            self.screen.blit(text, (guide.x + int(18 * scale), line_y))
+            line_y += max(19, int(27 * scale))
 
-        y = guide.y + 58
-
-        for line in lines:
-            text = self.font_small.render(
-                line,
-                True,
-                (215, 205, 185)
-            )
-
-            self.screen.blit(
-                text,
-                (
-                    guide.x + 20,
-                    y
-                )
-            )
-
-            y += 28
-
+        message_x = int(24 * scale)
+        message_width = min(
+            int(500 * scale),
+            max(0, self.BOARD_X - message_x - int(20 * scale)),
+        )
+        message_font = self.font
+        message_lines = []
+        current_line = ""
+        for word in self.message.split():
+            candidate = f"{current_line} {word}".strip()
+            if current_line and message_font.size(candidate)[0] > message_width - int(24 * scale):
+                message_lines.append(current_line)
+                current_line = word
+            else:
+                current_line = candidate
+        if current_line:
+            message_lines.append(current_line)
+        line_height = message_font.get_linesize()
+        message_height = max(
+            int(60 * scale),
+            len(message_lines) * line_height + int(22 * scale),
+        )
         message_box = pygame.Rect(
-            self.BOARD_X - 25,
-            self.BOARD_Y
-            + self.ROWS
-            * self.CELL
-            + 105,
-            530,
-            55
+            message_x,
+            self.height - message_height - int(16 * scale),
+            message_width,
+            message_height,
         )
-
-        pygame.draw.rect(
-            self.screen,
-            (38, 30, 25),
-            message_box,
-            border_radius=10
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            (155, 125, 80),
-            message_box,
-            2,
-            border_radius=10
-        )
-
-        message = self.font_small.render(
-            self.message,
-            True,
-            (255, 240, 170)
-        )
-
-        self.screen.blit(
-            message,
-            message.get_rect(
-                center=message_box.center
+        pygame.draw.rect(self.screen, (61, 19, 5), message_box, border_radius=8)
+        pygame.draw.rect(self.screen, (177, 92, 64), message_box, 2, border_radius=8)
+        for index, line in enumerate(message_lines):
+            message = message_font.render(line, True, (255, 240, 170))
+            self.screen.blit(
+                message,
+                message.get_rect(
+                    center=(
+                        message_box.centerx,
+                        message_box.centery
+                        + (index - (len(message_lines) - 1) / 2) * line_height,
+                    )
+                ),
             )
-        )
 
         if self.game_over:
-            overlay = pygame.Surface(
-                (
-                    self.width,
-                    self.height
-                ),
-                pygame.SRCALPHA
-            )
-
-            overlay.fill(
-                (
-                    0,
-                    0,
-                    0,
-                    175
-                )
-            )
-
-            self.screen.blit(
-                overlay,
-                (
-                    0,
-                    0
-                )
-            )
-
-            if self.win:
-                text = "CHIẾN THẮNG!"
-            else:
-                text = "GAME OVER"
-
-            title = self.font_big.render(
-                text,
-                True,
-                (255, 235, 150)
-            )
-
-            self.screen.blit(
-                title,
-                title.get_rect(
-                    center=(
-                        self.width // 2,
-                        self.height // 2 - 30
-                    )
-                )
-            )
-
-            sub = self.font.render(
-                "Nhấn R để chơi lại",
-                True,
-                (235, 225, 205)
-            )
-
-            self.screen.blit(
-                sub,
-                sub.get_rect(
-                    center=(
-                        self.width // 2,
-                        self.height // 2 + 25
-                    )
-                )
-            )
-
+            overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 175))
+            self.screen.blit(overlay, (0, 0))
+            title_text = "CHIẾN THẮNG!" if self.win else "THẤT BẠI!"
+            title = self.font_big.render(title_text, True, (255, 235, 150))
+            self.screen.blit(title, title.get_rect(center=(self.width // 2, self.height // 2 - 30)))
+            sub = self.font.render("Nhấn R để chơi lại", True, (235, 225, 205))
+            self.screen.blit(sub, sub.get_rect(center=(self.width // 2, self.height // 2 + 25)))
     def reset(self):
         self.game_over = False
         self.win = False
 
-        self.knight_hp = self.MAX_HP
+        self.knight_hp = min(
+            self.MAX_HP,
+            getattr(self.game_state, "health", self.MAX_HP),
+        )
         self.dragon_hp = self.MAX_HP
 
         self.dragon_shield = False
         self.shield_level = None
+        self.activated_shield_levels = set()
         self.dragon_defense_done = False
+        self.dragon_attack_flash_timer = 0
 
         self.turn = 0
+        self.failed_turns = 0
+        self.dragon_attacks_received = 0
+        self.rows_cleared_this_attack = 0
+        self.message_timer = 0
 
         self.selected_piece = None
         self.drag_current_col = None
@@ -2678,7 +2028,7 @@ class DragonBlockGame:
 
     def draw(self):
         self.screen.fill(
-            (22, 18, 17)
+            (248, 235, 212)
         )
 
         if self.animation is None:
@@ -2706,68 +2056,5 @@ class DragonBlockGame:
 
         self.draw_dragon()
         self.draw_knight()
+        self.draw_dragon_fire()
         self.draw_ui()
-
-        pygame.display.flip()
-
-    def run(self):
-        while self.running:
-            dt = self.clock.tick(60)
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
-
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_r:
-                        self.reset()
-
-                    elif (
-                        event.key == pygame.K_h
-                        and not self.game_over
-                    ):
-                        self.sword = not self.sword
-
-                        if self.sword:
-                            text = "Holy Sword: BẬT"
-                        else:
-                            text = "Holy Sword: TẮT"
-
-                        self.start_message(
-                            text,
-                            900
-                        )
-
-                elif (
-                    event.type
-                    == pygame.MOUSEBUTTONDOWN
-                    and event.button == 1
-                ):
-                    self.mouse_down(
-                        event.pos
-                    )
-
-                elif (
-                    event.type
-                    == pygame.MOUSEMOTION
-                ):
-                    self.mouse_motion(
-                        event.pos
-                    )
-
-                elif (
-                    event.type
-                    == pygame.MOUSEBUTTONUP
-                    and event.button == 1
-                ):
-                    self.mouse_up()
-
-            self.update(dt)
-
-            self.draw()
-
-        pygame.quit()
-
-
-if __name__ == "__main__":
-    DragonBlockGame().run()

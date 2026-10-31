@@ -19,6 +19,8 @@ class GameState:
 
         self.dragon_defeated = False
         self.princess_saved = False
+        self.dragon_cave_flower_used = False
+        self.dragon_cave_puzzle_solved = False
         self.ending = None
 
     def add_item(self, item_name):
