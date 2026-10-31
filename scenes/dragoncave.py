@@ -184,15 +184,23 @@ class DragonCaveScene(BaseScene):
             on_solved=self._begin_boss_dialogue,
         )
 
+    
     def _begin_boss_dialogue(self):
+        # Xóa hẳn scene câu đố cũ, không giữ lại đối tượng cũ.
+        self.gem_puzzle = None
+
         self.game_state.dragon_cave_puzzle_solved = True
+
         self._set_phase("dialogue")
         self.dialogue_index = 0
         self.camera_x = 0
+
         self.knight.target = None
         self.knight.x = int(105 * self.ui_scale)
         self.knight.y = self.height - int(235 * self.ui_scale)
+
         self.dragon.play_idle()
+
 
     def _begin_fire_attack(self):
         self._set_phase("fire_attack")
@@ -221,33 +229,48 @@ class DragonCaveScene(BaseScene):
         self._set_phase("completed")
         self.game.change_scene("world_map")
 
+    
     def handle_event(self, event):
         if super().handle_event(event):
             return
+
+        # Khi chiến đấu, chuyển tất cả sự kiện chuột
+        # sang trò chơi kéo khối, bao gồm nhấn, di chuyển và thả chuột.
+        if self.phase == "battle":
+            self.battle.handle_event(event)
+            return
+
         if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
             return
 
         if self.phase == "explore":
             self._handle_explore_click(event.pos)
+
         elif self.phase == "gem_puzzle" and self.gem_puzzle is not None:
             self.gem_puzzle.handle_event(event)
+
         elif self.phase == "dialogue":
             self.dialogue_index += 1
+
             if self.dialogue_index >= len(self.DIALOGUE):
                 self._begin_fire_attack()
-        elif self.phase == "battle":
-            self.battle.handle_event(event)
+
         elif self.phase == "retry":
             if self.retry_button.collidepoint(event.pos):
                 self._begin_battle()
+
             elif self.leave_button.collidepoint(event.pos):
                 self.game.change_scene("world_map")
+
         elif self.phase == "rescue" and self.rescue_ready:
             self.dialogue_index += 1
+
             if self.dialogue_index >= len(self.RESCUE_DIALOGUE):
                 self._finish_rescue()
+
         elif self.phase == "completed":
             self.game.change_scene("world_map")
+
 
     def _handle_explore_click(self, position):
         if self.knight.target is not None:
