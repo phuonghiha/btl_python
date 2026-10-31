@@ -1911,8 +1911,6 @@ class DragonBlockGame:
             "KHIÊN RỒNG: ĐANG BẬT" if self.dragon_shield else "KHIÊN RỒNG: ĐANG TẮT",
             "SÁT THƯƠNG MỖI HÀNG: " + "/".join(str(damage_table.get(i, max(damage_table.values()))) for i in range(1, 5)),
         ]
-        if not self.sword:
-            mode_lines.append("VẢY RỒNG GIỮ MÁU TRÊN 80")
         line_y = left_y + int(58 * scale)
         line_gap = max(20, int(29 * scale))
         for line in mode_lines:
