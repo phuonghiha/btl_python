@@ -316,6 +316,28 @@ class ForestScene(BaseScene):
             ),
         ]
 
+        self.dialogs_without_scale_return = [
+            ("Tinh linh", "Ngươi đã tìm thấy công chúa chưa?", "thinking"),
+            ("Hiệp sĩ", "Chưa… Ta vẫn chẳng biết nàng đang ở đâu.", "curious"),
+            ("Tinh linh", "Ngươi đã tìm kỹ nơi nàng từng sống chưa?", "stern"),
+            ("Hiệp sĩ", "Ta đã tìm, nhưng vẫn chưa hiểu chuyện gì đã xảy ra.", "curious"),
+            ("Tinh linh", "Đừng vội rời đi khi chưa xem xét mọi thứ. Hãy trở lại đó và quan sát cẩn thận hơn.", "stern"),
+            ("Hiệp sĩ", "Được. Ta sẽ thử lại.", "happy"),
+        ]
+
+        self.dialogs_with_scale_return = [
+            ("Tinh linh", "Ngươi đã tìm được điều mình cần chưa?", "thinking"),
+            ("Hiệp sĩ", "Ta có vảy rồng rồi. Nhưng ta vẫn chưa biết công chúa đang ở đâu.", "curious"),
+            ("Tinh linh", "Muốn đến nơi sinh sống của loài rồng, ngươi phải vượt qua Đầm Lầy Độc.", "stern"),
+            ("Hiệp sĩ", "Nếu phải đối mặt với rồng, ta cần chuẩn bị những gì?", "curious"),
+            ("Tinh linh", "Hãy quan sát chuyển động của đối thủ và chờ thời cơ. Nếu tìm được Thánh Kiếm, cơ hội chiến thắng của ngươi sẽ lớn hơn.", "stern"),
+            ("Hiệp sĩ", "Ta sẽ ghi nhớ. Cảm ơn ngài.", "happy"),
+            ("Tinh linh", "Mong ngươi tìm được công chúa và trở về bình an.", "happy"),
+            ("Tinh linh", "Hãy nhận viên đá chúc phúc này. Nó sẽ bảo vệ ngươi trước khí độc trong đầm lầy.", "happy"),
+            ("Hiệp sĩ", "Ta sẽ giữ viên đá cẩn thận. Cảm ơn ngài.", "happy"),
+            ("Tinh linh", "Con đường đến Đầm Lầy Độc nằm phía trước. Hãy cẩn thận với khí độc.", "thinking"),
+        ]
+
         self.dialogs = self.dialogs_without_scale
 
         self.intro_dialogs = [
@@ -355,9 +377,7 @@ class ForestScene(BaseScene):
 
         # Trường hợp 5: đã nhận đá chúc phúc và hoàn thành rừng.
         # Khi quay lại, không chạy lại câu đố hay hội thoại Tinh Linh.
-        self.already_completed = self._has_spirit_gemstone() and bool(
-            self._get_state("forest_puzzle_completed", False)
-        )
+        self.already_completed = self._has_spirit_gemstone()
         if self.already_completed:
             self.scene = "completed_return"
 
@@ -425,10 +445,7 @@ class ForestScene(BaseScene):
         Nếu đã nhận đá chúc phúc và hoàn thành câu đố,
         quay lại Forest sẽ không kích hoạt lại nội dung.
         """
-        if (
-            self._has_spirit_gemstone()
-            and self._get_state("forest_puzzle_completed", False)
-        ):
+        if self._has_spirit_gemstone():
             self.already_completed = True
             self.scene = "completed_return"
             return
@@ -488,13 +505,31 @@ class ForestScene(BaseScene):
 
     def _select_story_branch(self):
         self.has_dragon_scale = self._has_dragon_scale()
+        previously_met = bool(self._get_state("forest_spirit_met", False))
+
+        # Đã nhận đá chúc phúc và hoàn thành nhiệm vụ: trường hợp 5,
+        # quay lại không phát lại hội thoại hoặc câu đố.
+        if self._has_spirit_gemstone() and self._get_state("forest_puzzle_completed", False):
+            self.already_completed = True
+            self.scene = "completed_return"
+            return
 
         if self.has_dragon_scale:
-            self.dialogs = self.dialogs_with_scale
-            print("[ForestScene] Chon nhanh: CO vay rong")
+            self.dialogs = (
+                self.dialogs_with_scale_return
+                if previously_met
+                else self.dialogs_with_scale
+            )
+            print("[ForestScene] Chon nhanh: CO vay rong" + (" - gap lai" if previously_met else " - lan dau"))
         else:
-            self.dialogs = self.dialogs_without_scale
-            print("[ForestScene] Chon nhanh: KHONG CO vay rong")
+            self.dialogs = (
+                self.dialogs_without_scale_return
+                if previously_met
+                else self.dialogs_without_scale
+            )
+            print("[ForestScene] Chon nhanh: KHONG CO vay rong" + (" - gap lai" if previously_met else " - lan dau"))
+
+        self._set_state("forest_spirit_met", True)
 
     def _grant_blessing(self):
         if not self.has_dragon_scale:
@@ -1020,6 +1055,7 @@ class ForestScene(BaseScene):
                 self.has_dragon_scale
                 and self.dialog_index == 7
                 and not self.gem_revealed
+                and not self._has_spirit_gemstone()
             ):
                 self._start_item_reveal("gem")
                 return
