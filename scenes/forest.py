@@ -414,6 +414,9 @@ class ForestScene(BaseScene):
 
         self.finished = False
         self.transitioned = False
+        # Theo dõi việc rời khỏi rồi quay lại Forest; không dùng click
+        # để kết thúc hoặc khởi động lại hội thoại.
+        self._was_active = False
 
         self.dialogs = self.dialogs_without_scale
 
@@ -1068,6 +1071,11 @@ class ForestScene(BaseScene):
 
             if self.dialog_index >= len(self.dialogs):
                 self.scene = "ending"
+                # Kết thúc thoại ngay tại đây. Các lần click tiếp theo
+                # không phát lại câu thoại cuối hay chuyển scene ngoài ý muốn.
+                if not self.has_dragon_scale:
+                    self.finished = True
+                    self._mark_reset_when_reentering()
 
         elif self.scene == "ending":
             self.finished = True
@@ -1112,13 +1120,17 @@ class ForestScene(BaseScene):
     # =====================================================
 
     def update(self, dt):
-        # Game.change_scene() không gọi on_enter(). Khi người chơi quay
-        # lại Forest từ bản đồ, tự mở thoại quay lại ngay trong frame đầu.
+        # Chỉ xem là quay lại khi Forest vừa được mở sau khi người chơi
+        # đã rời sang scene khác. Không tự khởi động lại ngay tại ending.
+        is_active = self.game.current_scene_id == "spirit_forest"
+        reentered = is_active and not self._was_active
+        self._was_active = is_active
+
         if (
-            not self.already_completed
+            reentered
+            and not self.already_completed
             and self._get_state("forest_reset_pending", False)
             and self._get_state("forest_spirit_met", False)
-            and self.game.current_scene_id == "spirit_forest"
             and self.finished
             and not self.has_dragon_scale
         ):
