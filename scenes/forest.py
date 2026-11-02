@@ -460,24 +460,32 @@ class ForestScene(BaseScene):
     # =====================================================
 
     def _has_dragon_scale(self):
-        item_id = "dragon_scale"
+        """
+        Phòng công chúa lưu vảy rồng với ID 'red_dragon_scale',
+        trong khi Forest trước đây chỉ kiểm tra 'dragon_scale'.
+        Kiểm tra cả hai ID để nhận đúng vật phẩm trong túi đồ.
+        """
+        item_ids = (
+            "dragon_scale",
+            "red_dragon_scale",
+            "dragon_scales",
+        )
 
         checker = getattr(self.game_state, "has_item", None)
-
         if callable(checker):
-            try:
-                if checker(item_id):
-                    return True
-            except (AttributeError, TypeError, KeyError):
-                pass
+            for item_id in item_ids:
+                try:
+                    if checker(item_id):
+                        return True
+                except (AttributeError, TypeError, KeyError):
+                    pass
 
         inventory = getattr(self.game_state, "inventory", [])
-
         if isinstance(inventory, dict):
-            return item_id in inventory
+            return any(item_id in inventory for item_id in item_ids)
 
         try:
-            return item_id in inventory
+            return any(item_id in inventory for item_id in item_ids)
         except TypeError:
             return False
 
