@@ -172,10 +172,6 @@ class ForestScene(BaseScene):
         self.game = game
         self.game_state = game.game_state
 
-        # Nếu Forest được tạo lại sau khi rời đi,
-        # instance mới sẽ tự bắt đầu với trạng thái ban đầu.
-        self._clear_pending_reset()
-
         self.screen_size = game.screen.get_size()
         self.w, self.h = self.screen_size
 
@@ -414,10 +410,6 @@ class ForestScene(BaseScene):
 
         self.finished = False
         self.transitioned = False
-        # Theo dõi việc rời khỏi rồi quay lại Forest; không dùng click
-        # để kết thúc hoặc khởi động lại hội thoại.
-        self._was_active = False
-
         self.dialogs = self.dialogs_without_scale
 
     def _set_state(self, name, value):
@@ -1075,15 +1067,9 @@ class ForestScene(BaseScene):
                 # không phát lại câu thoại cuối hay chuyển scene ngoài ý muốn.
                 if not self.has_dragon_scale:
                     self.finished = True
-                    self._mark_reset_when_reentering()
 
         elif self.scene == "ending":
             self.finished = True
-
-            # Chưa có vảy rồng:
-            # Giữ nguyên màn hình Forest để người chơi mở bản đồ.
-            if not self.has_dragon_scale:
-                self._mark_reset_when_reentering()
 
     # =====================================================
     # INPUT
@@ -1092,6 +1078,19 @@ class ForestScene(BaseScene):
     def handle_event(self, event):
         if self.already_completed:
             return
+
+        # Chỉ đánh dấu cần phát thoại quay lại khi người chơi thật sự
+        # rời màn Forest bằng nút bản đồ sau khi thoại đã kết thúc.
+        # Không đặt cờ ngay lúc thoại kết thúc, nếu không update() sẽ
+        # khởi động lại thoại ngay trên chính màn ending.
+        if (
+            self.finished
+            and not self.has_dragon_scale
+            and event.type == pygame.MOUSEBUTTONDOWN
+            and event.button == 1
+            and self.map_button_rect.collidepoint(event.pos)
+        ):
+            self._mark_reset_when_reentering()
 
         if super().handle_event(event):
             return
@@ -1120,14 +1119,11 @@ class ForestScene(BaseScene):
     # =====================================================
 
     def update(self, dt):
-        # Chỉ xem là quay lại khi Forest vừa được mở sau khi người chơi
-        # đã rời sang scene khác. Không tự khởi động lại ngay tại ending.
-        is_active = self.game.current_scene_id == "spirit_forest"
-        reentered = is_active and not self._was_active
-        self._was_active = is_active
-
+        # Khi người chơi đã rời Forest bằng nút bản đồ, cờ pending
+        # vẫn được giữ trong game_state. Khi quay lại Forest, bắt đầu
+        # thoại quay lại ngay trong update đầu tiên.
         if (
-            reentered
+            self.game.current_scene_id == "spirit_forest"
             and not self.already_completed
             and self._get_state("forest_reset_pending", False)
             and self._get_state("forest_spirit_met", False)
