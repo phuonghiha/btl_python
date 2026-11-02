@@ -39,9 +39,10 @@ class DragonCaveScene(BaseScene):
     def __init__(self, game):
         super().__init__(game)
         self._load_assets()
-        self._font = content1(22)
+        # Dùng cùng cỡ chữ với hội thoại ở Rừng Tinh Linh và Phòng Công Chúa.
+        self._font = content1(23)
         self._small_font = content1(18)
-        self._title_font = title(38)
+        self._title_font = title(22)
         self._scaled_knight_cache = {}
         self.dragon = Dragon()
         self.princess = Princess()
@@ -493,22 +494,58 @@ class DragonCaveScene(BaseScene):
         screen.blit(image, (round(x), round(y)))
 
     def _draw_dialogue(self, screen, lines, index):
+        # Giữ nguyên khung chuẩn dùng trong các màn khác.
         box = STANDARD_DIALOG_RECT.copy()
         box.width = min(box.width, self.width - 48)
         box.centerx = self.width // 2
         draw_dialogue_frame(screen, box)
+
         speaker, text = lines[min(index, len(lines) - 1)]
-        speaker_image = self._title_font.render(speaker, True, (112, 65, 34))
-        screen.blit(speaker_image, (box.x + 24, box.y + 14))
-        self._draw_wrapped_text(
-            screen,
-            text,
-            self._font,
-            (55, 42, 31),
-            pygame.Rect(box.x + 25, box.y + 56, box.width - 50, box.height - 72),
+
+        # Tên người nói nằm ở góc trên trái, cùng vị trí với Forest.
+        speaker_image = self._title_font.render(
+            speaker, True, (112, 65, 34)
         )
-        prompt = self._small_font.render("Nhấp để tiếp tục", True, (112, 75, 42))
-        screen.blit(prompt, prompt.get_rect(right=box.right - 16, bottom=box.bottom - 10))
+        screen.blit(speaker_image, (box.x + 27, box.y + 18))
+
+        # Nội dung canh trái bên dưới tên người nói, không căn giữa như trước.
+        text_rect = pygame.Rect(
+            box.x + 28,
+            box.y + 50,
+            box.width - 56,
+            box.height - 78,
+        )
+        lines_to_draw = self._wrap_dialogue_lines(text, self._font, text_rect.width)
+        line_height = self._font.get_linesize()
+        for line_index, line in enumerate(lines_to_draw[:3]):
+            line_image = self._font.render(line, True, (55, 42, 31))
+            screen.blit(
+                line_image,
+                (text_rect.x, text_rect.y + line_index * line_height),
+            )
+
+        prompt = self._small_font.render(
+            "Click để tiếp tục", True, (112, 75, 42)
+        )
+        screen.blit(
+            prompt,
+            prompt.get_rect(right=box.right - 16, bottom=box.bottom - 10),
+        )
+
+    @staticmethod
+    def _wrap_dialogue_lines(text, font, max_width):
+        lines = []
+        current = ""
+        for word in text.split():
+            candidate = f"{current} {word}".strip()
+            if current and font.size(candidate)[0] > max_width:
+                lines.append(current)
+                current = word
+            else:
+                current = candidate
+        if current:
+            lines.append(current)
+        return lines or ["" ]
 
     def _draw_hint(self, screen, text):
         box = pygame.Rect(
