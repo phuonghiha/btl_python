@@ -172,10 +172,6 @@ class ForestScene(BaseScene):
         self.game = game
         self.game_state = game.game_state
 
-        # Nếu Forest được tạo lại sau khi rời đi,
-        # instance mới sẽ tự bắt đầu với trạng thái ban đầu.
-        self._clear_pending_reset()
-
         self.screen_size = game.screen.get_size()
         self.w, self.h = self.screen_size
 
@@ -218,67 +214,57 @@ class ForestScene(BaseScene):
         self.dialogs_with_scale = [
             (
                 "Tinh linh",
-                "Ngươi đã khôi phục ký ức của khu rừng. "
-                "Ta công nhận trí tuệ của ngươi.",
+                "Ngươi đã khôi phục ký ức của khu rừng. Ta công nhận trí tuệ của ngươi.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Khoan đã... khí tức trên người ngươi thật quen thuộc. "
-                "Ta đoán được điều ngươi muốn hỏi rồi.",
+                "Ta là Tinh Linh, người bảo vệ khu rừng cổ này. Ngươi là ai, đến đây để làm gì?",
                 "thinking",
             ),
             (
                 "Hiệp sĩ",
-                "Ta đang tìm đường đến hang rồng. "
-                "Thứ này có thể giải thích lý do.",
+                "Ta là hiệp sĩ của nhà vua. Công chúa đã mất tích. Trong phòng nàng, ta tìm thấy một chiếc vảy rồng.",
                 "curious",
             ),
             (
                 "Hiệp sĩ",
-                "Đây là chiếc vảy rồng ta tìm thấy trên đường đi.",
+                "Ta muốn tìm công chúa. Xin hãy chỉ cho ta đường đến hang rồng và cách đánh bại con rồng.",
                 "curious",
             ),
             (
                 "Tinh linh",
-                "Vảy rồng... ta hiểu rồi. Hang rồng nằm phía bên kia "
-                "Đầm Lầy Độc, nơi sương mù che phủ lối vào.",
+                "Vậy thứ ngươi tìm thấy đúng là vảy rồng. Hang rồng nằm phía bên kia Đầm Lầy Độc, nơi khí độc bao phủ lối đi.",
                 "surprised",
             ),
             (
                 "Tinh linh",
-                "Hãy nhớ rằng mắt thấy chưa chắc đã là thật. "
-                "Ảo ảnh có thể khiến ngươi lạc lối.",
+                "Hãy quan sát đòn tấn công của rồng và chờ thời cơ phản công. Nếu có Thánh Kiếm, ngươi sẽ gây sát thương mạnh hơn.",
                 "stern",
             ),
             (
                 "Tinh linh",
-                "Hãy nhận viên đá chúc phúc này. "
-                "Nó sẽ bảo vệ ngươi trước khí độc trong đầm lầy.",
+                "Hãy nhận viên đá chúc phúc này. Nó sẽ bảo vệ ngươi trước khí độc trong đầm lầy.",
                 "happy",
             ),
             (
                 "Hiệp sĩ",
-                "Ta sẽ giữ viên đá cẩn thận. "
-                "Cảm ơn ngươi đã giúp đỡ.",
+                "Ta sẽ giữ viên đá cẩn thận. Cảm ơn ngươi đã giúp đỡ.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Hãy men theo những thân cây phủ rêu, "
-                "rồi đi về phía dòng nước đen. "
-                "Lối vào hang rồng nằm sau màn sương.",
+                "Hãy men theo những thân cây phủ rêu, rồi đi về phía dòng nước đen. Lối vào hang rồng nằm sau màn sương.",
                 "thinking",
             ),
             (
                 "Hiệp sĩ",
-                "Ta hiểu rồi. Ta sẽ ghi nhớ lời chỉ dẫn này.",
+                "Ta hiểu rồi. Ta sẽ ghi nhớ lời chỉ dẫn này và tìm cách cứu công chúa.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Chúc ngươi bình an, hiệp sĩ. "
-                "Đừng vội tin mọi thứ ngươi nhìn thấy.",
+                "Chúc ngươi bình an, hiệp sĩ. Đừng vội tin mọi thứ ngươi nhìn thấy.",
                 "stern",
             ),
         ]
@@ -286,50 +272,66 @@ class ForestScene(BaseScene):
         self.dialogs_without_scale = [
             (
                 "Tinh linh",
-                "Ngươi đã khôi phục ký ức của khu rừng. "
-                "Ta công nhận trí tuệ của ngươi.",
+                "Ngươi đã khôi phục ký ức của khu rừng. Ta công nhận trí tuệ của ngươi.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Nhưng thật kì lạ... "
-                "ta lại chẳng cảm nhận được điều gì đặc biệt ở ngươi.",
-                "thinking",
-            ),
-            (
-                "Tinh linh",
-                "Không biết điều gì đã dẫn ngươi đến đây... "
-                "có lẽ ngươi chỉ là 1 kẻ lạc đường?",
-                "curious",
-            ),
-            (
-                "Hiệp sĩ",
-                "Đúng vậy. Ta đang tìm đường ra khỏi khu rừng. "
-                "Ngươi có thể chỉ đường cho ta không?",
-                "curious",
-            ),
-            (
-                "Tinh linh",
-                "Hãy đi theo dòng suối phía trước. "
-                "Ngươi sẽ tìm thấy một đoạn nước có thể lội qua.",
-                "happy",
-            ),
-            (
-                "Tinh linh",
-                "Sau khi qua suối, hãy tiếp tục đi xuyên qua rừng. "
-                "Con đường đó sẽ dẫn ngươi đến thị trấn.",
+                "Ta là Tinh Linh, người bảo vệ khu rừng cổ này. Ngươi là ai, đến đây để làm gì?",
                 "thinking",
             ),
             (
                 "Hiệp sĩ",
-                "Ta hiểu rồi. Cảm ơn ngươi đã giúp đỡ.",
+                "Ta là hiệp sĩ của nhà vua. Công chúa đã mất tích, và ta được giao nhiệm vụ tìm nàng.",
+                "curious",
+            ),
+            (
+                "Tinh linh",
+                "Ngươi đã tìm được manh mối nào giúp tìm công chúa chưa?",
+                "thinking",
+            ),
+            (
+                "Hiệp sĩ",
+                "Chưa. Ta vẫn chưa biết nàng đang ở đâu hay phải bắt đầu từ đâu.",
+                "curious",
+            ),
+            (
+                "Tinh linh",
+                "Hãy quay lại nơi công chúa từng sống và quan sát thật kỹ. Đôi khi câu trả lời nằm ở nơi ta ít ngờ tới nhất.",
+                "stern",
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta hiểu rồi. Ta sẽ quay lại phòng công chúa để tìm manh mối.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Chúc ngươi thượng lộ bình an, lữ khách.",
+                "Hãy kiên nhẫn và đừng bỏ qua bất kỳ dấu vết nào.",
                 "happy",
             ),
+        ]
+
+        self.dialogs_without_scale_return = [
+            ("Tinh linh", "Ngươi đã tìm thấy công chúa chưa?", "thinking"),
+            ("Hiệp sĩ", "Chưa… Ta vẫn chẳng biết nàng đang ở đâu.", "curious"),
+            ("Tinh linh", "Ngươi đã tìm kỹ nơi nàng từng sống chưa?", "stern"),
+            ("Hiệp sĩ", "Ta đã tìm, nhưng vẫn chưa hiểu chuyện gì đã xảy ra.", "curious"),
+            ("Tinh linh", "Đừng vội rời đi khi chưa xem xét mọi thứ. Hãy trở lại đó và quan sát cẩn thận hơn.", "stern"),
+            ("Hiệp sĩ", "Được. Ta sẽ thử lại.", "happy"),
+        ]
+
+        self.dialogs_with_scale_return = [
+            ("Tinh linh", "Ngươi đã tìm được điều mình cần chưa?", "thinking"),
+            ("Hiệp sĩ", "Ta có vảy rồng rồi. Nhưng ta vẫn chưa biết công chúa đang ở đâu.", "curious"),
+            ("Tinh linh", "Muốn đến nơi sinh sống của loài rồng, ngươi phải vượt qua Đầm Lầy Độc.", "stern"),
+            ("Hiệp sĩ", "Nếu phải đối mặt với rồng, ta cần chuẩn bị những gì?", "curious"),
+            ("Tinh linh", "Hãy quan sát chuyển động của đối thủ và chờ thời cơ. Nếu tìm được Thánh Kiếm, cơ hội chiến thắng của ngươi sẽ lớn hơn.", "stern"),
+            ("Hiệp sĩ", "Ta sẽ ghi nhớ. Cảm ơn ngài.", "happy"),
+            ("Tinh linh", "Hãy nhận viên đá chúc phúc này. Nó sẽ bảo vệ ngươi trước khí độc trong đầm lầy.", "happy"),
+            ("Hiệp sĩ", "Ta sẽ giữ viên đá cẩn thận. Cảm ơn ngài.", "happy"),
+            ("Tinh linh", "Con đường đến Đầm Lầy Độc nằm phía trước. Hãy cẩn thận với khí độc.", "thinking"),
+            ("Tinh linh", "Mong ngươi tìm được công chúa và trở về bình an.", "happy"),
         ]
 
         self.dialogs = self.dialogs_without_scale
@@ -369,6 +371,15 @@ class ForestScene(BaseScene):
 
         self._init_story_state()
 
+        # Chỉ khóa nội dung khi đã có đá chúc phúc VÀ đã hoàn thành câu đố rừng.
+        # Chỉ có viên đá chưa đủ để đánh dấu toàn bộ nhiệm vụ đã xong.
+        self.already_completed = (
+            self._has_spirit_gemstone()
+            and self._forest_puzzle_completed()
+        )
+        if self.already_completed:
+            self.scene = "completed_return"
+
 
     # =====================================================
     # KHỞI TẠO TRẠNG THÁI
@@ -395,20 +406,26 @@ class ForestScene(BaseScene):
         self.blessing_granted = False
 
         self.has_dragon_scale = False
+        self.already_completed = False
 
         self.finished = False
         self.transitioned = False
-
         self.dialogs = self.dialogs_without_scale
 
     def _set_state(self, name, value):
-        try:
-            setattr(self.game_state, name, value)
-        except (AttributeError, TypeError):
-            print(f"[ForestScene] Khong the cap nhat game_state.{name}")
+        # Chỉ ghi các cờ đã khai báo chính thức trong GameState.
+        if name not in {"forest_spirit_met", "forest_reset_pending"}:
+            raise ValueError(f"Trạng thái không được khai báo trong GameState: {name}")
+        setattr(self.game_state, name, value)
 
     def _get_state(self, name, default=False):
-        return getattr(self.game_state, name, default)
+        # Không đọc thuộc tính tự tạo/ngầm định ngoài GameState.
+        if not hasattr(self.game_state, name):
+            return default
+        return getattr(self.game_state, name)
+
+    def _forest_puzzle_completed(self):
+        return "forest_tangram" in self.game_state.completed_puzzles
 
     def _mark_reset_when_reentering(self):
         """
@@ -429,9 +446,17 @@ class ForestScene(BaseScene):
 
     def on_enter(self):
         """
-        Nếu Game của bạn gọi on_enter() khi quay lại một scene
-        đã tồn tại, kiểm tra cờ reset và khởi tạo lại Forest.
+        Nếu đã nhận đá chúc phúc và hoàn thành câu đố,
+        quay lại Forest sẽ không kích hoạt lại nội dung.
         """
+        if (
+            self._has_spirit_gemstone()
+            and self._forest_puzzle_completed()
+        ):
+            self.already_completed = True
+            self.scene = "completed_return"
+            return
+
         if self._get_state("forest_reset_pending", False):
             self._clear_pending_reset()
             self.reset()
@@ -441,36 +466,40 @@ class ForestScene(BaseScene):
     # =====================================================
 
     def _has_dragon_scale(self):
-        item_id = "dragon_scale"
+        # PrincessRoomScene ghi đúng ID này vào GameState.inventory.
+        return self.game_state.has_item("red_dragon_scale")
 
-        checker = getattr(self.game_state, "has_item", None)
-
-        if callable(checker):
-            try:
-                if checker(item_id):
-                    return True
-            except (AttributeError, TypeError, KeyError):
-                pass
-
-        inventory = getattr(self.game_state, "inventory", [])
-
-        if isinstance(inventory, dict):
-            return item_id in inventory
-
-        try:
-            return item_id in inventory
-        except TypeError:
-            return False
+    def _has_spirit_gemstone(self):
+        # Đá chúc phúc chỉ được xem là đã có khi ID tồn tại trong inventory.
+        return self.game_state.has_item("forest_gemstone")
 
     def _select_story_branch(self):
         self.has_dragon_scale = self._has_dragon_scale()
+        previously_met = bool(self._get_state("forest_spirit_met", False))
+
+        # Đã nhận đá chúc phúc và hoàn thành nhiệm vụ: trường hợp 5,
+        # quay lại không phát lại hội thoại hoặc câu đố.
+        if self._has_spirit_gemstone() and self._forest_puzzle_completed():
+            self.already_completed = True
+            self.scene = "completed_return"
+            return
 
         if self.has_dragon_scale:
-            self.dialogs = self.dialogs_with_scale
-            print("[ForestScene] Chon nhanh: CO vay rong")
+            self.dialogs = (
+                self.dialogs_with_scale_return
+                if previously_met
+                else self.dialogs_with_scale
+            )
+            print("[ForestScene] Chon nhanh: CO vay rong" + (" - gap lai" if previously_met else " - lan dau"))
         else:
-            self.dialogs = self.dialogs_without_scale
-            print("[ForestScene] Chon nhanh: KHONG CO vay rong")
+            self.dialogs = (
+                self.dialogs_without_scale_return
+                if previously_met
+                else self.dialogs_without_scale
+            )
+            print("[ForestScene] Chon nhanh: KHONG CO vay rong" + (" - gap lai" if previously_met else " - lan dau"))
+
+        self._set_state("forest_spirit_met", True)
 
     def _grant_blessing(self):
         if not self.has_dragon_scale:
@@ -481,23 +510,14 @@ class ForestScene(BaseScene):
 
         self.blessing_granted = True
 
-        self._set_state("has_poison_protection", True)
-        self._set_state("forest_gemstone", True)
-        self._set_state("forest_puzzle_completed", True)
+        self.game_state.has_poison_protection = True
 
         clue = (
             "Qua Đầm Lầy Độc, men theo thân cây phủ rêu "
             "và dòng nước đen. Cửa hang rồng nằm sau màn sương."
         )
-
-        self._set_state("dragon_cave_clue", clue)
-
-        if hasattr(self.game_state, "add_clue"):
-            self.game_state.add_clue(clue)
-
-        if hasattr(self.game_state, "complete_puzzle"):
-            self.game_state.complete_puzzle("forest_tangram")
-
+        self.game_state.add_clue(clue)
+        self.game_state.complete_puzzle("forest_tangram")
         self.add_item(
             "forest_gemstone",
             "Đá chúc phúc tinh linh",
@@ -996,26 +1016,42 @@ class ForestScene(BaseScene):
                 self.has_dragon_scale
                 and self.dialog_index == 7
                 and not self.gem_revealed
+                and not self._has_spirit_gemstone()
             ):
                 self._start_item_reveal("gem")
                 return
 
             if self.dialog_index >= len(self.dialogs):
                 self.scene = "ending"
+                # Kết thúc thoại ngay tại đây. Các lần click tiếp theo
+                # không phát lại câu thoại cuối hay chuyển scene ngoài ý muốn.
+                if not self.has_dragon_scale:
+                    self.finished = True
 
         elif self.scene == "ending":
             self.finished = True
-
-            # Chưa có vảy rồng:
-            # Giữ nguyên màn hình Forest để người chơi mở bản đồ.
-            if not self.has_dragon_scale:
-                self._mark_reset_when_reentering()
 
     # =====================================================
     # INPUT
     # =====================================================
 
     def handle_event(self, event):
+        if self.already_completed:
+            return
+
+        # Chỉ đánh dấu cần phát thoại quay lại khi người chơi thật sự
+        # rời màn Forest bằng nút bản đồ sau khi thoại đã kết thúc.
+        # Không đặt cờ ngay lúc thoại kết thúc, nếu không update() sẽ
+        # khởi động lại thoại ngay trên chính màn ending.
+        if (
+            self.finished
+            and not self.has_dragon_scale
+            and event.type == pygame.MOUSEBUTTONDOWN
+            and event.button == 1
+            and self.map_button_rect.collidepoint(event.pos)
+        ):
+            self._mark_reset_when_reentering()
+
         if super().handle_event(event):
             return
 
@@ -1024,8 +1060,9 @@ class ForestScene(BaseScene):
                 self.puzzle.handle_event(event)
             return
 
-        # Khi đã hoàn thành nhánh không có vảy rồng,
-        # không cho click làm thay đổi màn hình ending.
+        # Sau khi kết thúc nhánh chưa có vảy rồng, giữ màn ending
+        # cho đến khi người chơi mở bản đồ. Thoại quay lại được tự mở
+        # trong update() ngay khi quay lại Forest, không cần click kích hoạt.
         if self.finished and not self.has_dragon_scale:
             return
 
@@ -1042,6 +1079,33 @@ class ForestScene(BaseScene):
     # =====================================================
 
     def update(self, dt):
+        # Khi người chơi đã rời Forest bằng nút bản đồ, cờ pending
+        # vẫn được giữ trong game_state. Khi quay lại Forest, bắt đầu
+        # thoại quay lại ngay trong update đầu tiên.
+        if (
+            self.game.current_scene_id == "spirit_forest"
+            and not self.already_completed
+            and self._get_state("forest_reset_pending", False)
+            and self._get_state("forest_spirit_met", False)
+            and self.finished
+            and not self.has_dragon_scale
+        ):
+            self._clear_pending_reset()
+            self._select_story_branch()
+
+            if not self.already_completed:
+                self.scene = "dialog"
+                self.dialog_index = 0
+                self.char_progress = 0.0
+                self.finished = False
+                self.transitioned = False
+                self.gem_revealed = self._has_spirit_gemstone()
+
+        # Trường hợp 5: đã hoàn thành rừng và có đá chúc phúc,
+        # quay lại chỉ giữ nền rừng, không phát sinh sự kiện mới.
+        if self.already_completed:
+            return
+
         # Nhánh không có vảy rồng:
         # Giữ nguyên màn hình ending, chờ người chơi mở bản đồ.
         if self.finished and not self.has_dragon_scale:
@@ -1110,6 +1174,10 @@ class ForestScene(BaseScene):
             return
 
         screen.blit(self.forest, (0, 0))
+
+        if self.already_completed or self.scene == "completed_return":
+            super().draw(screen)
+            return
 
         if self.scene == "approach":
             ghost = self.house_bg.copy()
