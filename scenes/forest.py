@@ -332,10 +332,10 @@ class ForestScene(BaseScene):
             ("Hiệp sĩ", "Nếu phải đối mặt với rồng, ta cần chuẩn bị những gì?", "curious"),
             ("Tinh linh", "Hãy quan sát chuyển động của đối thủ và chờ thời cơ. Nếu tìm được Thánh Kiếm, cơ hội chiến thắng của ngươi sẽ lớn hơn.", "stern"),
             ("Hiệp sĩ", "Ta sẽ ghi nhớ. Cảm ơn ngài.", "happy"),
-            ("Tinh linh", "Mong ngươi tìm được công chúa và trở về bình an.", "happy"),
             ("Tinh linh", "Hãy nhận viên đá chúc phúc này. Nó sẽ bảo vệ ngươi trước khí độc trong đầm lầy.", "happy"),
             ("Hiệp sĩ", "Ta sẽ giữ viên đá cẩn thận. Cảm ơn ngài.", "happy"),
             ("Tinh linh", "Con đường đến Đầm Lầy Độc nằm phía trước. Hãy cẩn thận với khí độc.", "thinking"),
+            ("Tinh linh", "Mong ngươi tìm được công chúa và trở về bình an.", "happy"),
         ]
 
         self.dialogs = self.dialogs_without_scale
