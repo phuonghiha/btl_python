@@ -103,6 +103,7 @@ class PrincessRoomScene(BaseScene):
         self.mouse_pos = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         self.font = content1(23)
         self.small = content1(18)
+        self.cat_dialog_font = content1(15)
         self.title_font = title(36)
         self.items = {
             "pink_yarn": "Cuộn len hồng",
@@ -173,7 +174,11 @@ class PrincessRoomScene(BaseScene):
         self.modal = "dialog"
         self.dialogue = (speaker, text)
         self.dialog_style = style
-        self.dialog_pages = self._wrap(text, self.small if style == "cat" else self.font, 220 if style == "cat" else 780)
+        self.dialog_pages = self._wrap(
+            text,
+            self.cat_dialog_font if style == "cat" else self.font,
+            290 if style == "cat" else 780,
+        )
         self.dialog_page = 0
         self.type_progress = 0.0
         self.after_dialog = on_close
@@ -632,23 +637,23 @@ class PrincessRoomScene(BaseScene):
         self._text(screen, "Click", self.small, (112, 75, 42), (box.right - 50, box.y + 30), True)
 
     def _draw_cat_dialog(self, screen):
-        box = pygame.Rect(0, 0, 260, 106)
+        box = pygame.Rect(0, 0, 330, 102)
         box.bottom = self.cat_hitbox.top - 12
         box.left = self.cat_hitbox.centerx + 35
         box.clamp_ip(pygame.Rect(12, 12, SCREEN_WIDTH - 24, SCREEN_HEIGHT - 24))
         if box.colliderect(self.restart_button_rect):
             box.right = self.restart_button_rect.left - 12
         draw_dialogue_frame(screen, box)
-        self._text(screen, self.dialogue[0], self.small, (112, 65, 34), (box.x + 16, box.y + 12))
+        self._text(screen, self.dialogue[0], self.cat_dialog_font, (112, 65, 34), (box.x + 16, box.y + 10))
         page = self.dialog_pages[self.dialog_page:self.dialog_page + 3]
         remaining = int(self.type_progress)
-        y = box.y + 39
+        y = box.y + 32
         for line in page:
             shown = line[:remaining]
             remaining -= len(shown)
-            self._text(screen, shown, self.small, (55, 42, 31), (box.x + 16, y))
-            y += 21
-        prompt = self.small.render("Click", True, (112, 75, 42))
+            self._text(screen, shown, self.cat_dialog_font, (55, 42, 31), (box.x + 16, y))
+            y += 18
+        prompt = self.cat_dialog_font.render("Click", True, (112, 75, 42))
         screen.blit(prompt, prompt.get_rect(right=box.right - 12, bottom=box.bottom - 10))
 
     def _draw_puzzle(self, screen):
