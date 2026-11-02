@@ -375,7 +375,7 @@ class ForestScene(BaseScene):
         # Chỉ có viên đá chưa đủ để đánh dấu toàn bộ nhiệm vụ đã xong.
         self.already_completed = (
             self._has_spirit_gemstone()
-            and bool(self._get_state("forest_puzzle_completed", False))
+            and self._forest_puzzle_completed()
         )
         if self.already_completed:
             self.scene = "completed_return"
@@ -413,13 +413,19 @@ class ForestScene(BaseScene):
         self.dialogs = self.dialogs_without_scale
 
     def _set_state(self, name, value):
-        try:
-            setattr(self.game_state, name, value)
-        except (AttributeError, TypeError):
-            print(f"[ForestScene] Khong the cap nhat game_state.{name}")
+        # Chỉ ghi các cờ đã khai báo chính thức trong GameState.
+        if name not in {"forest_spirit_met", "forest_reset_pending", "has_poison_protection"}:
+            raise ValueError(f"Trạng thái không được khai báo trong GameState: {name}")
+        setattr(self.game_state, name, value)
 
     def _get_state(self, name, default=False):
-        return getattr(self.game_state, name, default)
+        # Không đọc thuộc tính tự tạo/ngầm định ngoài GameState.
+        if not hasattr(self.game_state, name):
+            return default
+        return getattr(self.game_state, name)
+
+    def _forest_puzzle_completed(self):
+        return "forest_tangram" in self.game_state.completed_puzzles
 
     def _mark_reset_when_reentering(self):
         """
@@ -460,65 +466,20 @@ class ForestScene(BaseScene):
     # =====================================================
 
     def _has_dragon_scale(self):
-        """
-        Phòng công chúa lưu vảy rồng với ID 'red_dragon_scale',
-        trong khi Forest trước đây chỉ kiểm tra 'dragon_scale'.
-        Kiểm tra cả hai ID để nhận đúng vật phẩm trong túi đồ.
-        """
-        item_ids = (
-            "dragon_scale",
-            "red_dragon_scale",
-            "dragon_scales",
-        )
-
-        checker = getattr(self.game_state, "has_item", None)
-        if callable(checker):
-            for item_id in item_ids:
-                try:
-                    if checker(item_id):
-                        return True
-                except (AttributeError, TypeError, KeyError):
-                    pass
-
-        inventory = getattr(self.game_state, "inventory", [])
-        if isinstance(inventory, dict):
-            return any(item_id in inventory for item_id in item_ids)
-
-        try:
-            return any(item_id in inventory for item_id in item_ids)
-        except TypeError:
-            return False
+        # PrincessRoomScene ghi đúng ID này vào GameState.inventory.
+        return self.game_state.has_item("red_dragon_scale")
 
     def _has_spirit_gemstone(self):
-        """Kiểm tra đá chúc phúc thật sự có trong túi đồ hoặc trạng thái game."""
-        checker = getattr(self.game_state, "has_item", None)
-        if callable(checker):
-            try:
-                if checker("forest_gemstone"):
-                    return True
-            except (AttributeError, TypeError, KeyError):
-                pass
+        # Đá chúc phúc chỉ được xem là đã có khi ID tồn tại trong inventory.
+        return self.game_state.has_item("forest_gemstone")
 
-        inventory = getattr(self.game_state, "inventory", [])
-        if isinstance(inventory, dict):
-            if "forest_gemstone" in inventory:
-                return True
-        else:
-            try:
-                if "forest_gemstone" in inventory:
-                    return True
-            except TypeError:
-                pass
-
-        return bool(self._get_state("forest_gemstone", False))
-
-    def _select_story_branch(self):
+        def _select_story_branch(self):
         self.has_dragon_scale = self._has_dragon_scale()
         previously_met = bool(self._get_state("forest_spirit_met", False))
 
         # Đã nhận đá chúc phúc và hoàn thành nhiệm vụ: trường hợp 5,
         # quay lại không phát lại hội thoại hoặc câu đố.
-        if self._has_spirit_gemstone() and self._get_state("forest_puzzle_completed", False):
+        if self._has_spirit_gemstone() and self._forest_puzzle_completed():
             self.already_completed = True
             self.scene = "completed_return"
             return
@@ -549,23 +510,14 @@ class ForestScene(BaseScene):
 
         self.blessing_granted = True
 
-        self._set_state("has_poison_protection", True)
-        self._set_state("forest_gemstone", True)
-        self._set_state("forest_puzzle_completed", True)
+        self.game_state.has_poison_protection = True
 
         clue = (
             "Qua Đầm Lầy Độc, men theo thân cây phủ rêu "
             "và dòng nước đen. Cửa hang rồng nằm sau màn sương."
         )
-
-        self._set_state("dragon_cave_clue", clue)
-
-        if hasattr(self.game_state, "add_clue"):
-            self.game_state.add_clue(clue)
-
-        if hasattr(self.game_state, "complete_puzzle"):
-            self.game_state.complete_puzzle("forest_tangram")
-
+        self.game_state.add_clue(clue)
+        self.game_state.complete_puzzle("forest_tangram")
         self.add_item(
             "forest_gemstone",
             "Đá chúc phúc tinh linh",
