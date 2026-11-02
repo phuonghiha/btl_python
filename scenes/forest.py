@@ -1093,33 +1093,10 @@ class ForestScene(BaseScene):
                 self.puzzle.handle_event(event)
             return
 
-        # Game.change_scene() hiện không gọi on_enter().
-        # Vì vậy, sau khi người chơi rời Forest qua bản đồ rồi quay lại,
-        # dùng thao tác đầu tiên trong Forest để kích hoạt hội thoại quay lại.
-        # Click nút bản đồ vẫn được BaseScene xử lý phía trên và không bị bắt ở đây.
+        # Sau khi kết thúc nhánh chưa có vảy rồng, giữ màn ending
+        # cho đến khi người chơi mở bản đồ. Thoại quay lại được tự mở
+        # trong update() ngay khi quay lại Forest, không cần click kích hoạt.
         if self.finished and not self.has_dragon_scale:
-            if (
-                self._get_state("forest_reset_pending", False)
-                and bool(self._get_state("forest_spirit_met", False))
-                and (
-                    event.type == pygame.MOUSEBUTTONDOWN
-                    and event.button == 1
-                    or event.type == pygame.KEYDOWN
-                    and event.key in (pygame.K_RETURN, pygame.K_SPACE)
-                )
-            ):
-                self._clear_pending_reset()
-                self._select_story_branch()
-
-                if not self.already_completed:
-                    self.scene = "dialog"
-                    self.dialog_index = 0
-                    self.char_progress = 0.0
-                    self.finished = False
-                    self.transitioned = False
-                    self.gem_revealed = self._has_spirit_gemstone()
-                return
-
             return
 
         if event.type == pygame.KEYDOWN:
@@ -1135,6 +1112,27 @@ class ForestScene(BaseScene):
     # =====================================================
 
     def update(self, dt):
+        # Game.change_scene() không gọi on_enter(). Khi người chơi quay
+        # lại Forest từ bản đồ, tự mở thoại quay lại ngay trong frame đầu.
+        if (
+            not self.already_completed
+            and self._get_state("forest_reset_pending", False)
+            and self._get_state("forest_spirit_met", False)
+            and self.game.current_scene_id == "spirit_forest"
+            and self.finished
+            and not self.has_dragon_scale
+        ):
+            self._clear_pending_reset()
+            self._select_story_branch()
+
+            if not self.already_completed:
+                self.scene = "dialog"
+                self.dialog_index = 0
+                self.char_progress = 0.0
+                self.finished = False
+                self.transitioned = False
+                self.gem_revealed = self._has_spirit_gemstone()
+
         # Trường hợp 5: đã hoàn thành rừng và có đá chúc phúc,
         # quay lại chỉ giữ nền rừng, không phát sinh sự kiện mới.
         if self.already_completed:
