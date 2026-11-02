@@ -218,67 +218,57 @@ class ForestScene(BaseScene):
         self.dialogs_with_scale = [
             (
                 "Tinh linh",
-                "Ngươi đã khôi phục ký ức của khu rừng. "
-                "Ta công nhận trí tuệ của ngươi.",
+                "Ngươi đã khôi phục ký ức của khu rừng. Ta công nhận trí tuệ của ngươi.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Khoan đã... khí tức trên người ngươi thật quen thuộc. "
-                "Ta đoán được điều ngươi muốn hỏi rồi.",
+                "Ta là Tinh Linh, người bảo vệ khu rừng cổ này. Ngươi là ai, đến đây để làm gì?",
                 "thinking",
             ),
             (
                 "Hiệp sĩ",
-                "Ta đang tìm đường đến hang rồng. "
-                "Thứ này có thể giải thích lý do.",
+                "Ta là hiệp sĩ của nhà vua. Công chúa đã mất tích. Trong phòng nàng, ta tìm thấy một chiếc vảy rồng.",
                 "curious",
             ),
             (
                 "Hiệp sĩ",
-                "Đây là chiếc vảy rồng ta tìm thấy trên đường đi.",
+                "Ta muốn tìm công chúa. Xin hãy chỉ cho ta đường đến hang rồng và cách đánh bại con rồng.",
                 "curious",
             ),
             (
                 "Tinh linh",
-                "Vảy rồng... ta hiểu rồi. Hang rồng nằm phía bên kia "
-                "Đầm Lầy Độc, nơi sương mù che phủ lối vào.",
+                "Vậy thứ ngươi tìm thấy đúng là vảy rồng. Hang rồng nằm phía bên kia Đầm Lầy Độc, nơi khí độc bao phủ lối đi.",
                 "surprised",
             ),
             (
                 "Tinh linh",
-                "Hãy nhớ rằng mắt thấy chưa chắc đã là thật. "
-                "Ảo ảnh có thể khiến ngươi lạc lối.",
+                "Hãy quan sát đòn tấn công của rồng và chờ thời cơ phản công. Nếu có Thánh Kiếm, ngươi sẽ gây sát thương mạnh hơn.",
                 "stern",
             ),
             (
                 "Tinh linh",
-                "Hãy nhận viên đá chúc phúc này. "
-                "Nó sẽ bảo vệ ngươi trước khí độc trong đầm lầy.",
+                "Hãy nhận viên đá chúc phúc này. Nó sẽ bảo vệ ngươi trước khí độc trong đầm lầy.",
                 "happy",
             ),
             (
                 "Hiệp sĩ",
-                "Ta sẽ giữ viên đá cẩn thận. "
-                "Cảm ơn ngươi đã giúp đỡ.",
+                "Ta sẽ giữ viên đá cẩn thận. Cảm ơn ngươi đã giúp đỡ.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Hãy men theo những thân cây phủ rêu, "
-                "rồi đi về phía dòng nước đen. "
-                "Lối vào hang rồng nằm sau màn sương.",
+                "Hãy men theo những thân cây phủ rêu, rồi đi về phía dòng nước đen. Lối vào hang rồng nằm sau màn sương.",
                 "thinking",
             ),
             (
                 "Hiệp sĩ",
-                "Ta hiểu rồi. Ta sẽ ghi nhớ lời chỉ dẫn này.",
+                "Ta hiểu rồi. Ta sẽ ghi nhớ lời chỉ dẫn này và tìm cách cứu công chúa.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Chúc ngươi bình an, hiệp sĩ. "
-                "Đừng vội tin mọi thứ ngươi nhìn thấy.",
+                "Chúc ngươi bình an, hiệp sĩ. Đừng vội tin mọi thứ ngươi nhìn thấy.",
                 "stern",
             ),
         ]
@@ -286,48 +276,42 @@ class ForestScene(BaseScene):
         self.dialogs_without_scale = [
             (
                 "Tinh linh",
-                "Ngươi đã khôi phục ký ức của khu rừng. "
-                "Ta công nhận trí tuệ của ngươi.",
+                "Ngươi đã khôi phục ký ức của khu rừng. Ta công nhận trí tuệ của ngươi.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Nhưng thật kì lạ... "
-                "ta lại chẳng cảm nhận được điều gì đặc biệt ở ngươi.",
-                "thinking",
-            ),
-            (
-                "Tinh linh",
-                "Không biết điều gì đã dẫn ngươi đến đây... "
-                "có lẽ ngươi chỉ là 1 kẻ lạc đường?",
-                "curious",
-            ),
-            (
-                "Hiệp sĩ",
-                "Đúng vậy. Ta đang tìm đường ra khỏi khu rừng. "
-                "Ngươi có thể chỉ đường cho ta không?",
-                "curious",
-            ),
-            (
-                "Tinh linh",
-                "Hãy đi theo dòng suối phía trước. "
-                "Ngươi sẽ tìm thấy một đoạn nước có thể lội qua.",
-                "happy",
-            ),
-            (
-                "Tinh linh",
-                "Sau khi qua suối, hãy tiếp tục đi xuyên qua rừng. "
-                "Con đường đó sẽ dẫn ngươi đến thị trấn.",
+                "Ta là Tinh Linh, người bảo vệ khu rừng cổ này. Ngươi là ai, đến đây để làm gì?",
                 "thinking",
             ),
             (
                 "Hiệp sĩ",
-                "Ta hiểu rồi. Cảm ơn ngươi đã giúp đỡ.",
+                "Ta là hiệp sĩ của nhà vua. Công chúa đã mất tích, và ta được giao nhiệm vụ tìm nàng.",
+                "curious",
+            ),
+            (
+                "Tinh linh",
+                "Ngươi đã tìm được manh mối nào giúp tìm công chúa chưa?",
+                "thinking",
+            ),
+            (
+                "Hiệp sĩ",
+                "Chưa. Ta vẫn chưa biết nàng đang ở đâu hay phải bắt đầu từ đâu.",
+                "curious",
+            ),
+            (
+                "Tinh linh",
+                "Hãy quay lại nơi công chúa từng sống và quan sát thật kỹ. Đôi khi câu trả lời nằm ở nơi ta ít ngờ tới nhất.",
+                "stern",
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta hiểu rồi. Ta sẽ quay lại phòng công chúa để tìm manh mối.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Chúc ngươi thượng lộ bình an, lữ khách.",
+                "Hãy kiên nhẫn và đừng bỏ qua bất kỳ dấu vết nào.",
                 "happy",
             ),
         ]
