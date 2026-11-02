@@ -473,7 +473,7 @@ class ForestScene(BaseScene):
         # Đá chúc phúc chỉ được xem là đã có khi ID tồn tại trong inventory.
         return self.game_state.has_item("forest_gemstone")
 
-        def _select_story_branch(self):
+    def _select_story_branch(self):
         self.has_dragon_scale = self._has_dragon_scale()
         previously_met = bool(self._get_state("forest_spirit_met", False))
 
