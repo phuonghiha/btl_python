@@ -1975,16 +1975,23 @@ class DragonBlockGame:
             return
 
         scale = self.ui_scale
-        width = min(int(760 * scale), self.width - int(40 * scale))
-        height = int(94 * scale)
-        x = (self.width - width) // 2
+        width = min(int(460 * scale), self.width - int(40 * scale))
+        height = int(78 * scale)
 
         if self.battle_dialog_speaker == "Hiệp sĩ":
+            x = (self.width - width) // 2
             y = self.height - height - int(18 * scale)
             border = (105, 150, 205)
             title_color = (190, 220, 255)
         else:
-            y = max(int(18 * scale), self.BOARD_Y - int(175 * scale))
+            # Place the compact bubble to the right of the dragon.
+            dragon_center_x = self.BOARD_X + self.COLS * self.CELL // 2
+            dragon_right = dragon_center_x + self.dragon_image.get_width() // 2
+            x = min(
+                self.width - width - int(18 * scale),
+                dragon_right + int(14 * scale),
+            )
+            y = max(int(18 * scale), self.BOARD_Y - int(125 * scale))
             border = (200, 86, 48)
             title_color = (255, 205, 145)
 
@@ -2022,7 +2029,7 @@ class DragonBlockGame:
         left_x = self.width - int(385 * scale) - int(24 * scale)
         left_y = int(160 * scale)
         left_width = int(385 * scale)
-        left_height = min(int(300 * scale), self.height - left_y - int(20 * scale))
+        left_height = min(int(265 * scale), self.height - left_y - int(20 * scale))
         left_panel = pygame.Rect(left_x, left_y, left_width, left_height)
         pygame.draw.rect(self.screen, (177, 92, 64), left_panel, border_radius=12)
         pygame.draw.rect(self.screen, (239, 139, 118), left_panel, 2, border_radius=12)
@@ -2049,7 +2056,7 @@ class DragonBlockGame:
         guide_x = left_x
         guide_y = int(455 * scale)
         guide_width = left_width
-        guide_height = min(int(225 * scale), self.height - guide_y - int(20 * scale))
+        guide_height = min(int(165 * scale), self.height - guide_y - int(20 * scale))
         guide = pygame.Rect(guide_x, guide_y, guide_width, guide_height)
         pygame.draw.rect(self.screen, (177, 92, 64), guide, border_radius=12)
         pygame.draw.rect(self.screen, (239, 139, 118), guide, 2, border_radius=12)

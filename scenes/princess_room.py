@@ -372,6 +372,7 @@ class PrincessRoomScene(BaseScene):
 
     def _finish_room(self):
         self.state.princess_room_completed = True
+        self.game.change_scene("spirit_forest")
 
     def _room_click(self, pos):
         if self.state.magnifier_active and self.state.letter_read and self._scale_is_visible_in_lens() and self.scale_hitbox.inflate(5, 5).collidepoint(self._lens_screen_to_world(pos)):

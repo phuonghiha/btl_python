@@ -1,10 +1,12 @@
 """Full Dragon Cave journey, reusing the existing two puzzle modules."""
 
 from pathlib import Path
+import math
+import random
 
 import pygame
 
-from base_scene import BaseScene, STANDARD_DIALOG_RECT, draw_dialogue_frame
+from base_scene import BaseScene, draw_dialogue_frame
 from characters.dragon import Dragon
 from characters.knight import Knight
 from characters.princess import Princess
@@ -75,6 +77,27 @@ class DragonCaveScene(BaseScene):
         self.dragon_defeated_image = pygame.image.load(
             str(SCENE_ASSETS / "dragonchibi.png")
         ).convert_alpha()
+        self.end_frame_image = pygame.image.load(
+            str(SCENE_ASSETS / "end.png")
+        ).convert_alpha()
+        frame_width = int(width * 0.62)
+        frame_height = int(height * 0.65)
+        image_width, image_height = self.end_frame_image.get_size()
+        frame_scale = min(
+            frame_width / image_width,
+            frame_height / image_height,
+        )
+        self.end_frame_image = pygame.transform.smoothscale(
+            self.end_frame_image,
+            (
+                max(1, int(image_width * frame_scale)),
+                max(1, int(image_height * frame_scale)),
+            ),
+        )
+        self.victory_dim_overlay = pygame.Surface(
+            (width, height), pygame.SRCALPHA
+        )
+        self.victory_dim_overlay.fill((0, 0, 0, 92))
 
     def _join_cave_backgrounds(self, first, second):
         """Blend the two existing cave images across their shared floor."""
@@ -127,6 +150,10 @@ class DragonCaveScene(BaseScene):
         self.interaction_timer = 0.0
         self.dialogue_index = 0
         self.rescue_ready = False
+        self.victory_wait_timer = 0.0
+        self.victory_elapsed = 0.0
+        self.victory_particle_time = 0.0
+        self.victory_particles = self._make_victory_particles()
         self.retry_button = pygame.Rect(0, 0, 0, 0)
         self.leave_button = pygame.Rect(0, 0, 0, 0)
         self.explore_player_size = (
@@ -144,6 +171,7 @@ class DragonCaveScene(BaseScene):
 
         if self.game_state.princess_saved:
             self._set_phase("completed")
+            self.victory_elapsed = 0.5
         elif self.game_state.dragon_defeated:
             self._begin_rescue()
         elif self.game_state.dragon_cave_puzzle_solved:
@@ -234,11 +262,37 @@ class DragonCaveScene(BaseScene):
         self.game_state.princess_saved = True
         self.game_state.complete_puzzle("dragon_cave")
         self.game_state.ending = "princess_rescued"
-        self._set_phase("completed")
-        self.game.change_scene("world_map")
+        self.rescue_ready = False
+        self.victory_wait_timer = 1.5
+        self.victory_elapsed = 0.0
+        self.victory_particle_time = 0.0
+        self._set_phase("victory_wait")
+
+    def _make_victory_particles(self):
+        frame_rect = self.end_frame_image.get_rect(center=(self.width // 2, self.height // 2))
+        particles = []
+        for _ in range(32):
+            edge = random.randrange(4)
+            along = random.random()
+            offset = random.randint(7, 30) * self.ui_scale
+            if edge == 0:
+                x, y = frame_rect.left + along * frame_rect.width, frame_rect.top - offset
+            elif edge == 1:
+                x, y = frame_rect.left + along * frame_rect.width, frame_rect.bottom + offset
+            elif edge == 2:
+                x, y = frame_rect.left - offset, frame_rect.top + along * frame_rect.height
+            else:
+                x, y = frame_rect.right + offset, frame_rect.top + along * frame_rect.height
+            particles.append((x, y, random.uniform(1.5, 3.4) * self.ui_scale, random.random() * 6.283))
+        return particles
 
     
     def handle_event(self, event):
+        if self.phase in ("victory_wait", "completed"):
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self.map_button_rect.collidepoint(event.pos):
+                    super().handle_event(event)
+            return
         if super().handle_event(event):
             return
 
@@ -275,10 +329,6 @@ class DragonCaveScene(BaseScene):
 
             if self.dialogue_index >= len(self.RESCUE_DIALOGUE):
                 self._finish_rescue()
-
-        elif self.phase == "completed":
-            self.game.change_scene("world_map")
-
 
     def _handle_explore_click(self, position):
         if self.knight.target is not None:
@@ -329,7 +379,17 @@ class DragonCaveScene(BaseScene):
         )
 
     def update(self, dt):
-        if self.inventory_open:
+        if self.inventory_open and self.phase not in ("victory_wait", "completed"):
+            return
+
+        if self.phase == "victory_wait":
+            self.victory_wait_timer = max(0.0, self.victory_wait_timer - dt)
+            if self.victory_wait_timer <= 0:
+                self._set_phase("completed")
+            return
+        if self.phase == "completed":
+            self.victory_elapsed = min(0.5, self.victory_elapsed + dt)
+            self.victory_particle_time += dt
             return
 
         if self.phase == "explore":
@@ -385,8 +445,6 @@ class DragonCaveScene(BaseScene):
             self.knight.update(dt)
             if self.knight.target is None:
                 self.rescue_ready = True
-        elif self.phase == "completed" and self.notice_timer > 0:
-            self.notice_timer = max(0, self.notice_timer - dt)
 
     def draw(self, screen):
         if self.phase == "explore":
@@ -408,8 +466,10 @@ class DragonCaveScene(BaseScene):
         elif self.phase == "retry":
             self.battle.draw()
             self._draw_retry_prompt(screen)
-        elif self.phase in ("rescue", "completed"):
+        elif self.phase in ("rescue", "victory_wait", "completed"):
             self._draw_rescue(screen)
+            if self.phase == "completed":
+                self._draw_victory(screen)
         super().draw(screen)
 
     def _draw_exploration(self, screen):
@@ -446,8 +506,16 @@ class DragonCaveScene(BaseScene):
     def _draw_inner_cave(self, screen):
         screen.blit(self.cave_background, (0, 0))
         screen.blit(self.inner_darkness, (0, 0))
-        dragon_position = (int(self.width * 0.55), int(self.height * 0.04))
-        dragon_size = (int(self.height * 0.80), int(self.height * 0.80))
+        dragon_scale = 0.76 if self.phase == "fire_attack" else 0.70
+        dragon_size = (
+            int(self.height * dragon_scale),
+            int(self.height * dragon_scale),
+        )
+        dragon_floor = self.height - int(118 * self.ui_scale)
+        dragon_position = (
+            int(self.width * 0.55),
+            max(0, dragon_floor - dragon_size[1]),
+        )
         self.dragon.draw(screen, dragon_position, dragon_size)
         knight_size = (int(self.height * 0.30), int(self.height * 0.42))
         self._draw_knight_at(
@@ -481,12 +549,125 @@ class DragonCaveScene(BaseScene):
             self.knight.y,
             knight_size,
         )
-        if self.rescue_ready:
+        if self.phase == "rescue" and self.rescue_ready:
             self._draw_rescue_dialogue(
                 screen, princess_center, princess_size, knight_size
             )
-        elif self.phase == "completed":
-            self._draw_hint(screen, "Công chúa đã được giải cứu. Hành trình hoàn tất!")
+
+    def _draw_victory(self, screen):
+        fade = max(0, min(255, round(255 * self.victory_elapsed / 0.5)))
+        screen.blit(self.victory_dim_overlay, (0, 0))
+
+        frame_rect = self.end_frame_image.get_rect(
+            center=(self.width // 2, self.height // 2)
+        )
+        self.end_frame_image.set_alpha(fade)
+        screen.blit(self.end_frame_image, frame_rect)
+        self.end_frame_image.set_alpha(255)
+
+        title_font = content1(max(25, int(40 * self.ui_scale)))
+        body_font = content1(max(18, int(26 * self.ui_scale)))
+        heading = title_font.render("CHIẾN THẮNG", True, (111, 60, 20))
+        heading.set_alpha(fade)
+        heading_rect = heading.get_rect(
+            center=(frame_rect.centerx, frame_rect.top + int(frame_rect.height * 0.40))
+        )
+        screen.blit(heading, heading_rect)
+        trophy_size = max(20, int(34 * self.ui_scale))
+        trophy = pygame.Surface((trophy_size, trophy_size), pygame.SRCALPHA)
+        gold = (180, 105, 25, fade)
+        pygame.draw.polygon(
+            trophy,
+            gold,
+            [
+                (int(trophy_size * 0.18), int(trophy_size * 0.12)),
+                (int(trophy_size * 0.82), int(trophy_size * 0.12)),
+                (int(trophy_size * 0.72), int(trophy_size * 0.60)),
+                (trophy_size // 2, int(trophy_size * 0.76)),
+                (int(trophy_size * 0.28), int(trophy_size * 0.60)),
+            ],
+        )
+        pygame.draw.arc(
+            trophy, gold,
+            pygame.Rect(0, int(trophy_size * 0.18), int(trophy_size * 0.36), int(trophy_size * 0.40)),
+            -1.2, 1.2, max(2, int(2 * self.ui_scale)),
+        )
+        pygame.draw.arc(
+            trophy, gold,
+            pygame.Rect(int(trophy_size * 0.64), int(trophy_size * 0.18), int(trophy_size * 0.36), int(trophy_size * 0.40)),
+            1.9, 4.4, max(2, int(2 * self.ui_scale)),
+        )
+        pygame.draw.rect(
+            trophy, gold,
+            pygame.Rect(int(trophy_size * 0.44), int(trophy_size * 0.72), int(trophy_size * 0.12), int(trophy_size * 0.16)),
+        )
+        pygame.draw.rect(
+            trophy, gold,
+            pygame.Rect(int(trophy_size * 0.30), int(trophy_size * 0.86), int(trophy_size * 0.40), max(2, int(trophy_size * 0.10))),
+        )
+        trophy_y = heading_rect.centery - trophy_size // 2
+        screen.blit(trophy, (heading_rect.left - trophy_size - int(12 * self.ui_scale), trophy_y))
+        screen.blit(trophy, (heading_rect.right + int(12 * self.ui_scale), trophy_y))
+
+        congratulation = body_font.render(
+            "Chúc mừng hiệp sĩ dũng cảm!", True, (92, 55, 28)
+        )
+        congratulation.set_alpha(fade)
+        screen.blit(
+            congratulation,
+            congratulation.get_rect(
+                center=(frame_rect.centerx, frame_rect.top + int(frame_rect.height * 0.52))
+            ),
+        )
+
+        message = "Bạn đã đánh bại rồng và giải cứu công chúa thành công!"
+        wrapped = self._wrap_dialogue_lines(
+            message, body_font, int(frame_rect.width * 0.72)
+        )
+        line_height = body_font.get_linesize()
+        message_center_y = frame_rect.top + int(frame_rect.height * 0.64)
+        message_top = message_center_y - len(wrapped) * line_height // 2
+        for index, line in enumerate(wrapped):
+            text_image = body_font.render(line, True, (92, 55, 28))
+            text_image.set_alpha(fade)
+            screen.blit(
+                text_image,
+                text_image.get_rect(
+                    center=(
+                        frame_rect.centerx,
+                        message_top + index * line_height + line_height // 2,
+                    )
+                ),
+            )
+
+        sparkles = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        for x, y, radius, phase in self.victory_particles:
+            pulse = (math.sin(self.victory_particle_time * 4.0 + phase) + 1) / 2
+            alpha = int(fade * (0.25 + 0.75 * pulse))
+            center = (round(x), round(y))
+            pygame.draw.circle(
+                sparkles,
+                (255, 220, 125, alpha),
+                center,
+                max(1, round(radius * (0.7 + 0.6 * pulse))),
+            )
+            if pulse > 0.72:
+                reach = max(2, round(radius * 2.2))
+                pygame.draw.line(
+                    sparkles,
+                    (255, 238, 180, alpha),
+                    (center[0] - reach, center[1]),
+                    (center[0] + reach, center[1]),
+                    1,
+                )
+                pygame.draw.line(
+                    sparkles,
+                    (255, 238, 180, alpha),
+                    (center[0], center[1] - reach),
+                    (center[0], center[1] + reach),
+                    1,
+                )
+        screen.blit(sparkles, (0, 0))
 
     def _draw_rescue_dialogue(
         self, screen, princess_center, princess_size, knight_size
@@ -495,15 +676,16 @@ class DragonCaveScene(BaseScene):
             min(self.dialogue_index, len(self.RESCUE_DIALOGUE) - 1)
         ]
         scale = self.ui_scale
-        box_width = int(300 * scale)
-        box_height = int(104 * scale)
-        gap = int(14 * scale)
+        box_width = int(260 * scale)
+        box_height = int(88 * scale)
+        gap = int(10 * scale)
         vertical_gap = int(4 * scale)
 
         if speaker == "Công chúa":
-            character_right = princess_center[0] + princess_size[0] // 2
-            box_x = min(self.width - box_width - gap, character_right + gap)
-            character_top = princess_center[1] - princess_size[1] // 2
+            # Place her line just above and to the right of the prince's head.
+            head_x = int(self.knight.x + knight_size[0] * 0.50)
+            box_x = min(self.width - box_width - gap, head_x + gap)
+            character_top = int(self.knight.y)
         else:
             head_x = int(self.knight.x + knight_size[0] * 0.45)
             box_x = max(gap, head_x - box_width - gap)
@@ -557,42 +739,66 @@ class DragonCaveScene(BaseScene):
         screen.blit(image, (round(x), round(y)))
 
     def _draw_dialogue(self, screen, lines, index):
-        # Giữ nguyên khung chuẩn dùng trong các màn khác.
-        box = STANDARD_DIALOG_RECT.copy()
-        box.width = min(box.width, self.width - 48)
-        box.centerx = self.width // 2
-        draw_dialogue_frame(screen, box)
-
         speaker, text = lines[min(index, len(lines) - 1)]
 
-        # Tên người nói nằm ở góc trên trái, cùng vị trí với Forest.
-        speaker_image = self._title_font.render(
-            speaker, True, (112, 65, 34)
+        scale = self.ui_scale
+        knight_size = (int(self.height * 0.30), int(self.height * 0.42))
+        dragon_size = int(self.height * 0.70)
+        box_width = int((400 if speaker == "Hiệp sĩ" else 420) * scale)
+        gap = int(7 * scale)
+        padding = max(8, int(14 * scale))
+        speaker_font = title(max(15, int(18 * scale)))
+        body_font = content1(max(14, int(17 * scale)))
+        prompt_font = content1(max(11, int(13 * scale)))
+        speaker_image = speaker_font.render(speaker, True, (112, 65, 34))
+        prompt = prompt_font.render("Click để tiếp tục", True, (112, 75, 42))
+        text_width = box_width - padding * 2
+        lines_to_draw = self._wrap_dialogue_lines(text, body_font, text_width)
+        line_height = body_font.get_linesize()
+        text_top = int(34 * scale)
+        text_bottom = int(10 * scale) + prompt.get_height()
+        box_height = max(
+            int(82 * scale),
+            text_top + len(lines_to_draw) * line_height + text_bottom,
         )
-        screen.blit(speaker_image, (box.x + 27, box.y + 18))
 
-        # Nội dung canh trái bên dưới tên người nói, không căn giữa như trước.
-        text_rect = pygame.Rect(
-            box.x + 28,
-            box.y + 50,
-            box.width - 56,
-            box.height - 78,
-        )
-        lines_to_draw = self._wrap_dialogue_lines(text, self._font, text_rect.width)
-        line_height = self._font.get_linesize()
-        for line_index, line in enumerate(lines_to_draw[:3]):
-            line_image = self._font.render(line, True, (55, 42, 31))
+        if speaker == "Hiệp sĩ":
+            knight_x = int(self.width * 0.10)
+            knight_y = self.height - knight_size[1] - int(24 * scale)
+            head_x = knight_x + int(knight_size[0] * 0.48)
+            box_x = min(self.width - box_width - gap, head_x + gap)
+            box_y = max(gap, knight_y - box_height - gap)
+        else:
+            dragon_x = int(self.width * 0.55)
+            dragon_y = max(
+                0,
+                self.height - int(118 * scale) - dragon_size,
+            )
+            box_x = max(
+                gap,
+                dragon_x - box_width - gap + int(24 * scale),
+            )
+            box_y = dragon_y + int(dragon_size * 0.08)
+
+        box = pygame.Rect(box_x, box_y, box_width, box_height)
+        draw_dialogue_frame(screen, box)
+
+        screen.blit(speaker_image, (box.x + padding, box.y + int(8 * scale)))
+        text_x = box.x + padding
+        text_y = box.y + text_top
+        for line_index, line in enumerate(lines_to_draw):
+            line_image = body_font.render(line, True, (55, 42, 31))
             screen.blit(
                 line_image,
-                (text_rect.x, text_rect.y + line_index * line_height),
+                (text_x, text_y + line_index * line_height),
             )
 
-        prompt = self._small_font.render(
-            "Click để tiếp tục", True, (112, 75, 42)
-        )
         screen.blit(
             prompt,
-            prompt.get_rect(right=box.right - 16, bottom=box.bottom - 10),
+            prompt.get_rect(
+                right=box.right - padding,
+                bottom=box.bottom - int(8 * scale),
+            ),
         )
 
     @staticmethod

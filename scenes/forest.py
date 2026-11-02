@@ -891,7 +891,13 @@ class ForestScene(BaseScene):
                 image, (display_size, display_size)
             )
 
-            rect = display.get_rect(center=(cx, cy))
+            # The gem artwork has an off-center visual mass inside its image
+            # bounds, so compensate slightly to align the visible orb with the ring.
+            visual_center = (
+                cx - int(self.w * 0.01),
+                cy - int(self.h * 0.006),
+            )
+            rect = display.get_rect(center=visual_center)
             screen.blit(display, rect)
         else:
             points = [

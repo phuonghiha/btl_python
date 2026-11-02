@@ -229,7 +229,8 @@ class BaseScene(Scene):
             title_image = self._scene_name_font.render(title, True, WHITE)
             screen.blit(title_image, (20, 10))
 
-        bar = pygame.Rect(20, 38, 222, 24)
+        # Keep the health bar clear of the scene title above it.
+        bar = pygame.Rect(20, 54, 222, 24)
         pygame.draw.rect(screen, DARK_BROWN, bar, border_radius=6)
         max_health = max(1, self.game_state.max_health)
         ratio = max(0.0, min(1.0, self.game_state.health / max_health))
