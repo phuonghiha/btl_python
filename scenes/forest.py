@@ -286,49 +286,124 @@ class ForestScene(BaseScene):
         self.dialogs_without_scale = [
             (
                 "Tinh linh",
-                "Ngươi đã khôi phục ký ức của khu rừng. "
-                "Ta công nhận trí tuệ của ngươi.",
+                "Ngươi đã khôi phục ký ức của khu rừng. Ta công nhận trí tuệ của ngươi.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Nhưng thật kì lạ... "
-                "ta lại chẳng cảm nhận được điều gì đặc biệt ở ngươi.",
+                "Thế nhưng... ta không cảm nhận được khí tức của rồng trên người ngươi.",
                 "thinking",
             ),
             (
                 "Tinh linh",
-                "Không biết điều gì đã dẫn ngươi đến đây... "
-                "có lẽ ngươi chỉ là 1 kẻ lạc đường?",
+                "Vậy hỡi hiệp sĩ, điều gì đã đưa ngươi tới khu rừng bị lãng quên này?",
                 "curious",
             ),
             (
                 "Hiệp sĩ",
-                "Đúng vậy. Ta đang tìm đường ra khỏi khu rừng. "
-                "Ngươi có thể chỉ đường cho ta không?",
-                "curious",
+                "Ta đang tìm công chúa mất tích. Ta định trở về lâu đài để tra hỏi manh mối và tìm hiểu chuyện gì đã xảy ra.",
+                "stern",
             ),
             (
                 "Tinh linh",
-                "Hãy đi theo dòng suối phía trước. "
-                "Ngươi sẽ tìm thấy một đoạn nước có thể lội qua.",
-                "happy",
-            ),
-            (
-                "Tinh linh",
-                "Sau khi qua suối, hãy tiếp tục đi xuyên qua rừng. "
-                "Con đường đó sẽ dẫn ngươi đến thị trấn.",
+                "Hãy men theo dòng suối về phía đông, vượt cây cầu đá phủ rêu. Con đường ấy sẽ đưa ngươi tới lâu đài.",
                 "thinking",
             ),
             (
                 "Hiệp sĩ",
-                "Ta hiểu rồi. Cảm ơn ngươi đã giúp đỡ.",
+                "Ta sẽ làm theo lời ngươi. Cảm tạ sự chỉ dẫn, hỡi linh hồn của khu rừng.",
                 "happy",
             ),
             (
                 "Tinh linh",
-                "Chúc ngươi thượng lộ bình an, lữ khách.",
+                "Nếu trong lâu đài ngươi tìm thấy dấu tích của loài rồng, hãy trở lại đây. Ta có thể giúp ngươi hiểu điều mà mắt phàm không thể thấy.",
+                "stern",
+            ),
+            (
+                "Tinh linh",
+                "Cầu cho ánh sáng dẫn lối ngươi, hiệp sĩ. Khu rừng này sẽ nhớ lời hứa của ngươi.",
                 "happy",
+            ),
+        ]
+
+        self.dialogs_return_with_scale = [
+            (
+                "Tinh linh",
+                "Ngươi đã trở lại rồi, hiệp sĩ. Có chuyện gì đã xảy ra nơi lâu đài?",
+                "surprised",
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta tìm thấy chiếc vảy này giữa những manh mối về sự mất tích của công chúa. Nó mang dấu ấn của một con rồng.",
+                "curious",
+            ),
+            (
+                "Tinh linh",
+                "Vảy rồng... vậy lời đồn không phải chuyện hoang đường. Ngươi muốn biết nơi nó trú ngụ, hay cách hạ gục nó?",
+                "thinking",
+            ),
+            (
+                "Hiệp sĩ",
+                "Cả hai. Hãy nói cho ta biết hang rồng ở đâu, và làm thế nào để ta có thể đánh bại nó.",
+                "stern",
+            ),
+            (
+                "Tinh linh",
+                "Hang rồng nằm bên kia Đầm Lầy Độc, sau màn sương đen. Đừng giao chiến bằng thép thường: lớp vảy ấy gần như bất hoại. Trong đầm lầy, hãy tìm thanh Kiếm Thánh — thứ duy nhất đủ sức xuyên qua giáp rồng.",
+                "stern",
+            ),
+            (
+                "Tinh linh",
+                "Trước khi lên đường, hãy nhận viên đá chúc phúc này. Nó sẽ che chở ngươi trước hơi độc của đầm lầy.",
+                "happy",
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta sẽ không quên ân tình này. Khi công chúa được an toàn, ta sẽ trở lại tạ ơn ngươi.",
+                "happy",
+            ),
+            (
+                "Tinh linh",
+                "Hãy đi theo thân cây phủ rêu tới dòng nước đen. Cửa hang ẩn sau màn sương; chớ để ảo ảnh đánh lừa đôi mắt ngươi.",
+                "thinking",
+            ),
+        ]
+
+        self.dialogs_return_without_scale = [
+            (
+                "Tinh linh",
+                "Ngươi lại trở về rồi, hiệp sĩ. Chuyến đi tới lâu đài có đem lại điều gì chăng?",
+                "curious",
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta vẫn chưa tìm được vảy rồng. Những lời đồn trong lâu đài chỉ dẫn tới một bức thư cũ và nhiều câu hỏi chưa có lời giải.",
+                "stern",
+            ),
+            (
+                "Tinh linh",
+                "Vậy hãy quay lại căn phòng nơi công chúa biến mất. Đôi khi bí mật không nằm trong lời viết, mà ẩn dưới lớp mực phai và dấu niêm phong.",
+                "thinking",
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta sẽ xem xét bức thư kỹ hơn. Nếu có dấu vết nào bị che giấu, ta nhất định sẽ tìm ra.",
+                "curious",
+            ),
+            (
+                "Tinh linh",
+                "Hãy dùng chiếc kính lúp để soi những chỗ tưởng chừng trống rỗng. Một chiếc vảy nhỏ có thể mở ra con đường dẫn tới cả một vực thẳm.",
+                "stern",
+            ),
+            (
+                "Hiệp sĩ",
+                "Ta hiểu rồi. Ta sẽ trở lại lâu đài và tìm kiếm lần nữa.",
+                "happy",
+            ),
+            (
+                "Tinh linh",
+                "Khi tìm được dấu tích của rồng, hãy mang nó tới đây. Bấy giờ ta mới có thể chỉ cho ngươi con đường thật sự.",
+                "thinking",
             ),
         ]
 
@@ -375,12 +450,13 @@ class ForestScene(BaseScene):
     # =====================================================
 
     def _init_story_state(self):
-        self.scene = "approach"
+        # Dữ liệu này nằm trong GameState nên vẫn còn khi rời rừng rồi quay lại.
+        self.is_revisit = bool(self._get_state("forest_spirit_met", False))
+        self.scene = "spirit_reveal" if self.is_revisit else "approach"
         self.timer = 0.0
         self.echo_time = 0.0
 
         self.knight_x = -170
-
         self.dialog_index = 0
         self.char_progress = 0.0
 
@@ -393,13 +469,15 @@ class ForestScene(BaseScene):
 
         self.gem_revealed = False
         self.blessing_granted = False
-
         self.has_dragon_scale = False
 
         self.finished = False
         self.transitioned = False
-
         self.dialogs = self.dialogs_without_scale
+
+        # Nếu đã gặp tinh linh trước đây thì không bắt ghép hình lần nữa.
+        if self.is_revisit:
+            self._select_story_branch()
 
     def _set_state(self, name, value):
         try:
@@ -465,12 +543,19 @@ class ForestScene(BaseScene):
     def _select_story_branch(self):
         self.has_dragon_scale = self._has_dragon_scale()
 
-        if self.has_dragon_scale:
+        if self.is_revisit:
+            if self.has_dragon_scale:
+                self.dialogs = self.dialogs_return_with_scale
+                print("[ForestScene] Quay lai: CO vay rong")
+            else:
+                self.dialogs = self.dialogs_return_without_scale
+                print("[ForestScene] Quay lai: CHUA CO vay rong")
+        elif self.has_dragon_scale:
             self.dialogs = self.dialogs_with_scale
-            print("[ForestScene] Chon nhanh: CO vay rong")
+            print("[ForestScene] Lan dau: CO vay rong")
         else:
             self.dialogs = self.dialogs_without_scale
-            print("[ForestScene] Chon nhanh: KHONG CO vay rong")
+            print("[ForestScene] Lan dau: KHONG CO vay rong")
 
     def _grant_blessing(self):
         if not self.has_dragon_scale:
@@ -1001,10 +1086,14 @@ class ForestScene(BaseScene):
                 return
 
             if self.dialog_index >= len(self.dialogs):
+                self._set_state("forest_spirit_met", True)
+                self._set_state("forest_puzzle_completed", True)
                 self.scene = "ending"
 
         elif self.scene == "ending":
             self.finished = True
+            self._set_state("forest_spirit_met", True)
+            self._set_state("forest_puzzle_completed", True)
 
             # Chưa có vảy rồng:
             # Giữ nguyên màn hình Forest để người chơi mở bản đồ.
@@ -1081,7 +1170,8 @@ class ForestScene(BaseScene):
                 self.puzzle_done_time += dt
 
                 if self.puzzle_done_time > 1.6:
-                    # Kiểm tra túi đồ ngay sau khi hoàn thành puzzle.
+                    # Đánh dấu puzzle đã xong, nhưng không xóa vật phẩm trong túi.
+                    self._set_state("forest_puzzle_completed", True)
                     self._select_story_branch()
 
                     self.scene = "spirit_reveal"
