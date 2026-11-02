@@ -102,12 +102,6 @@ class Game:
         self.current_scene = self.scenes[scene_id]
         self.game_state.current_scene = scene_id
 
-        # Cho scene biết khi người chơi quay lại, để scene có thể
-        # khôi phục trạng thái phù hợp mà không xóa túi đồ toàn cục.
-        on_enter = getattr(self.current_scene, "on_enter", None)
-        if callable(on_enter):
-            on_enter()
-
     def restart_game(self):
         # Đưa toàn bộ trạng thái về ban đầu
         self.game_state.reset()
