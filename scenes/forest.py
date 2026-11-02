@@ -353,6 +353,14 @@ class ForestScene(BaseScene):
 
         self._init_story_state()
 
+        # Trường hợp 5: đã nhận đá chúc phúc và hoàn thành rừng.
+        # Khi quay lại, không chạy lại câu đố hay hội thoại Tinh Linh.
+        self.already_completed = self._has_spirit_gemstone() and bool(
+            self._get_state("forest_puzzle_completed", False)
+        )
+        if self.already_completed:
+            self.scene = "completed_return"
+
 
     # =====================================================
     # KHỞI TẠO TRẠNG THÁI
@@ -379,6 +387,7 @@ class ForestScene(BaseScene):
         self.blessing_granted = False
 
         self.has_dragon_scale = False
+        self.already_completed = False
 
         self.finished = False
         self.transitioned = False
@@ -413,9 +422,17 @@ class ForestScene(BaseScene):
 
     def on_enter(self):
         """
-        Nếu Game của bạn gọi on_enter() khi quay lại một scene
-        đã tồn tại, kiểm tra cờ reset và khởi tạo lại Forest.
+        Nếu đã nhận đá chúc phúc và hoàn thành câu đố,
+        quay lại Forest sẽ không kích hoạt lại nội dung.
         """
+        if (
+            self._has_spirit_gemstone()
+            and self._get_state("forest_puzzle_completed", False)
+        ):
+            self.already_completed = True
+            self.scene = "completed_return"
+            return
+
         if self._get_state("forest_reset_pending", False):
             self._clear_pending_reset()
             self.reset()
@@ -445,6 +462,29 @@ class ForestScene(BaseScene):
             return item_id in inventory
         except TypeError:
             return False
+
+    def _has_spirit_gemstone(self):
+        """Kiểm tra đá chúc phúc thật sự có trong túi đồ hoặc trạng thái game."""
+        checker = getattr(self.game_state, "has_item", None)
+        if callable(checker):
+            try:
+                if checker("forest_gemstone"):
+                    return True
+            except (AttributeError, TypeError, KeyError):
+                pass
+
+        inventory = getattr(self.game_state, "inventory", [])
+        if isinstance(inventory, dict):
+            if "forest_gemstone" in inventory:
+                return True
+        else:
+            try:
+                if "forest_gemstone" in inventory:
+                    return True
+            except TypeError:
+                pass
+
+        return bool(self._get_state("forest_gemstone", False))
 
     def _select_story_branch(self):
         self.has_dragon_scale = self._has_dragon_scale()
@@ -1000,6 +1040,9 @@ class ForestScene(BaseScene):
     # =====================================================
 
     def handle_event(self, event):
+        if self.already_completed:
+            return
+
         if super().handle_event(event):
             return
 
@@ -1026,6 +1069,11 @@ class ForestScene(BaseScene):
     # =====================================================
 
     def update(self, dt):
+        # Trường hợp 5: đã hoàn thành rừng và có đá chúc phúc,
+        # quay lại chỉ giữ nền rừng, không phát sinh sự kiện mới.
+        if self.already_completed:
+            return
+
         # Nhánh không có vảy rồng:
         # Giữ nguyên màn hình ending, chờ người chơi mở bản đồ.
         if self.finished and not self.has_dragon_scale:
@@ -1094,6 +1142,10 @@ class ForestScene(BaseScene):
             return
 
         screen.blit(self.forest, (0, 0))
+
+        if self.already_completed or self.scene == "completed_return":
+            super().draw(screen)
+            return
 
         if self.scene == "approach":
             ghost = self.house_bg.copy()
