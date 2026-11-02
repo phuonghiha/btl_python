@@ -219,7 +219,14 @@ class DragonCaveScene(BaseScene):
         self.knight.target = None
         self.knight.x = int(115 * self.ui_scale)
         self.knight.y = self.height - int(235 * self.ui_scale)
-        self.knight.move_to(int(self.width * 0.56), self.knight.y)
+        knight_width = int(self.height * 0.30)
+        knight_height = int(self.height * 0.42)
+        princess_x = int(self.width * 0.78)
+        princess_y = int(self.height * 0.72)
+        self.knight.move_to(
+            princess_x - knight_width - int(18 * self.ui_scale),
+            princess_y - knight_height // 2,
+        )
         self.dragon.play_idle()
 
     def _finish_rescue(self):
@@ -464,8 +471,9 @@ class DragonCaveScene(BaseScene):
                 (int(self.width * 0.60), int(self.height * 0.34)),
             )
         princess_center = (int(self.width * 0.78), int(self.height * 0.72))
-        self.princess.draw(screen, princess_center, self.ui_scale)
         knight_size = (int(self.height * 0.30), int(self.height * 0.42))
+        princess_size = tuple(max(1, int(dimension * 0.85)) for dimension in knight_size)
+        self.princess.draw(screen, princess_center, princess_size)
         self._draw_knight_at(
             screen,
             self.knight.x,
@@ -473,13 +481,68 @@ class DragonCaveScene(BaseScene):
             knight_size,
         )
         if self.rescue_ready:
-            self._draw_dialogue(
-                screen,
-                self.RESCUE_DIALOGUE,
-                self.dialogue_index,
+            self._draw_rescue_dialogue(
+                screen, princess_center, princess_size, knight_size
             )
         elif self.phase == "completed":
             self._draw_hint(screen, "Công chúa đã được giải cứu. Hành trình hoàn tất!")
+
+    def _draw_rescue_dialogue(
+        self, screen, princess_center, princess_size, knight_size
+    ):
+        speaker, text = self.RESCUE_DIALOGUE[
+            min(self.dialogue_index, len(self.RESCUE_DIALOGUE) - 1)
+        ]
+        scale = self.ui_scale
+        box_width = int(300 * scale)
+        box_height = int(104 * scale)
+        gap = int(14 * scale)
+        vertical_gap = int(4 * scale)
+
+        if speaker == "Công chúa":
+            character_right = princess_center[0] + princess_size[0] // 2
+            box_x = min(self.width - box_width - gap, character_right + gap)
+            character_top = princess_center[1] - princess_size[1] // 2
+        else:
+            head_x = int(self.knight.x + knight_size[0] * 0.45)
+            box_x = max(gap, head_x - box_width - gap)
+            character_top = int(self.knight.y)
+        box_y = max(gap, character_top - box_height - vertical_gap)
+
+        box = pygame.Rect(box_x, box_y, box_width, box_height)
+        draw_dialogue_frame(screen, box)
+        speaker_font = content1(max(18, int(21 * scale)))
+        text_font = content1(max(16, int(18 * scale)))
+        speaker_image = speaker_font.render(speaker, True, (112, 65, 34))
+        screen.blit(speaker_image, (box.x + int(14 * scale), box.y + int(8 * scale)))
+        text_rect = pygame.Rect(
+            box.x + int(14 * scale),
+            box.y + int(38 * scale),
+            box.width - int(28 * scale),
+            box.height - int(48 * scale),
+        )
+        self._draw_left_wrapped_text(screen, text, text_font, (55, 42, 31), text_rect)
+
+    def _draw_left_wrapped_text(self, screen, text, font, color, rect):
+        lines = []
+        current = ""
+        for word in text.split():
+            candidate = f"{current} {word}".strip()
+            if current and font.size(candidate)[0] > rect.width:
+                lines.append(current)
+                current = word
+            else:
+                current = candidate
+        if current:
+            lines.append(current)
+
+        line_height = font.get_linesize()
+        total_height = line_height * len(lines)
+        y = rect.centery - total_height // 2
+        for line in lines:
+            image = font.render(line, True, color)
+            screen.blit(image, (rect.left, y))
+            y += line_height
 
     def _draw_knight_at(self, screen, x, y, size):
         frame = self.knight.animation.get_current_frame()
