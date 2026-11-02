@@ -375,9 +375,12 @@ class ForestScene(BaseScene):
 
         self._init_story_state()
 
-        # Trường hợp 5: đã nhận đá chúc phúc và hoàn thành rừng.
-        # Khi quay lại, không chạy lại câu đố hay hội thoại Tinh Linh.
-        self.already_completed = self._has_spirit_gemstone()
+        # Chỉ khóa nội dung khi đã có đá chúc phúc VÀ đã hoàn thành câu đố rừng.
+        # Chỉ có viên đá chưa đủ để đánh dấu toàn bộ nhiệm vụ đã xong.
+        self.already_completed = (
+            self._has_spirit_gemstone()
+            and bool(self._get_state("forest_puzzle_completed", False))
+        )
         if self.already_completed:
             self.scene = "completed_return"
 
@@ -445,7 +448,10 @@ class ForestScene(BaseScene):
         Nếu đã nhận đá chúc phúc và hoàn thành câu đố,
         quay lại Forest sẽ không kích hoạt lại nội dung.
         """
-        if self._has_spirit_gemstone():
+        if (
+            self._has_spirit_gemstone()
+            and bool(self._get_state("forest_puzzle_completed", False))
+        ):
             self.already_completed = True
             self.scene = "completed_return"
             return
