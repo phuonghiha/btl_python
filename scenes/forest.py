@@ -414,7 +414,7 @@ class ForestScene(BaseScene):
 
     def _set_state(self, name, value):
         # Chỉ ghi các cờ đã khai báo chính thức trong GameState.
-        if name not in {"forest_spirit_met", "forest_reset_pending", "has_poison_protection"}:
+        if name not in {"forest_spirit_met", "forest_reset_pending"}:
             raise ValueError(f"Trạng thái không được khai báo trong GameState: {name}")
         setattr(self.game_state, name, value)
 
@@ -451,7 +451,7 @@ class ForestScene(BaseScene):
         """
         if (
             self._has_spirit_gemstone()
-            and bool(self._get_state("forest_puzzle_completed", False))
+            and self._forest_puzzle_completed()
         ):
             self.already_completed = True
             self.scene = "completed_return"
