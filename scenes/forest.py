@@ -1093,9 +1093,33 @@ class ForestScene(BaseScene):
                 self.puzzle.handle_event(event)
             return
 
-        # Khi đã hoàn thành nhánh không có vảy rồng,
-        # không cho click làm thay đổi màn hình ending.
+        # Game.change_scene() hiện không gọi on_enter().
+        # Vì vậy, sau khi người chơi rời Forest qua bản đồ rồi quay lại,
+        # dùng thao tác đầu tiên trong Forest để kích hoạt hội thoại quay lại.
+        # Click nút bản đồ vẫn được BaseScene xử lý phía trên và không bị bắt ở đây.
         if self.finished and not self.has_dragon_scale:
+            if (
+                self._get_state("forest_reset_pending", False)
+                and bool(self._get_state("forest_spirit_met", False))
+                and (
+                    event.type == pygame.MOUSEBUTTONDOWN
+                    and event.button == 1
+                    or event.type == pygame.KEYDOWN
+                    and event.key in (pygame.K_RETURN, pygame.K_SPACE)
+                )
+            ):
+                self._clear_pending_reset()
+                self._select_story_branch()
+
+                if not self.already_completed:
+                    self.scene = "dialog"
+                    self.dialog_index = 0
+                    self.char_progress = 0.0
+                    self.finished = False
+                    self.transitioned = False
+                    self.gem_revealed = self._has_spirit_gemstone()
+                return
+
             return
 
         if event.type == pygame.KEYDOWN:
