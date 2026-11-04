@@ -11,18 +11,18 @@ class Cat:
 
         self.speed = 180
 
-        # sit -> stand_up -> ready -> walk
+        
         self.state = "sit"
 
         self.animation = AnimationManager()
 
-        # Ảnh mèo ngồi ban đầu
+        
         self.animation.load_image(
             "sit",
             "assets/sprites/cat/stand_up/n_1.png"
         )
 
-        # Animation đứng dậy: n_1 -> n_6
+        
         self.animation.load_folder(
             "stand_up",
             "assets/sprites/cat/stand_up",
@@ -30,7 +30,7 @@ class Cat:
             loop=False
         )
 
-        # Animation đi: w_1 -> w_5
+        
         self.animation.load_folder(
             "walk",
             "assets/sprites/cat/walk",
@@ -50,7 +50,7 @@ class Cat:
 
 
     def walk(self):
-        # Chỉ đi sau khi đứng dậy xong
+        
         if self.state != "ready":
             return
 
@@ -64,7 +64,7 @@ class Cat:
 
             self.animation.update(dt)
 
-            # n_1 -> ... -> n_6 chạy xong
+            
             if self.animation.is_finished():
                 self.state = "ready"
 
@@ -73,7 +73,7 @@ class Cat:
 
             self.animation.update(dt)
 
-            # Mèo di chuyển sang phải
+            
             self.x += self.speed * dt
 
 
