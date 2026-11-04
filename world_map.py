@@ -20,12 +20,12 @@ class WorldMap(Scene):
             MAP_IMAGE_PATH
         ).convert()
 
-        # Kích thước gốc của ảnh bản đồ
+        
         self.original_width, self.original_height = (
             self.map_image.get_size()
         )
 
-        # Co ảnh vừa màn hình, giữ nguyên tỉ lệ
+        
         scale = min(
             SCREEN_WIDTH / self.original_width,
             SCREEN_HEIGHT / self.original_height
@@ -43,8 +43,8 @@ class WorldMap(Scene):
             center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         )
 
-        # Vùng bấm tính theo tọa độ tương đối của ảnh gốc:
-        # (x, y, width, height)
+        
+        
         self.locations = {
             "princess_room": (150, 460, 270, 95),
             "spirit_forest": (600, 510, 235, 90),
@@ -75,7 +75,7 @@ class WorldMap(Scene):
                     self.game.change_scene(location)
 
     def get_location_at(self, mouse_pos):
-        # Đổi tọa độ màn hình thành tọa độ ảnh gốc
+        
         if not self.map_rect.collidepoint(mouse_pos):
             return None
 
