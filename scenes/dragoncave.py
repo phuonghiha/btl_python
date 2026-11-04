@@ -289,9 +289,15 @@ class DragonCaveScene(BaseScene):
     
     def handle_event(self, event):
         if self.phase in ("victory_wait", "completed"):
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if self.map_button_rect.collidepoint(event.pos):
-                    super().handle_event(event)
+            if (
+                event.type == pygame.MOUSEBUTTONDOWN
+                and event.button == 1
+                and (
+                    self.map_button_rect.collidepoint(event.pos)
+                    or self.restart_button_rect.collidepoint(event.pos)
+                )
+            ):
+                super().handle_event(event)
             return
         if super().handle_event(event):
             return
@@ -878,10 +884,10 @@ class DragonCaveScene(BaseScene):
             int(210 * self.ui_scale),
             int(42 * self.ui_scale),
         )
-        self._draw_button(screen, self.retry_button, "Đánh lại")
-        self._draw_button(screen, self.leave_button, "Về bản đồ")
+        self._draw_battle_button(screen, self.retry_button, "Đánh lại")
+        self._draw_battle_button(screen, self.leave_button, "Về bản đồ")
 
-    def _draw_button(self, screen, rect, label):
+    def _draw_battle_button(self, screen, rect, label):
         pygame.draw.rect(screen, (119, 77, 44), rect, border_radius=7)
         pygame.draw.rect(screen, (210, 169, 97), rect, 2, border_radius=7)
         image = self._small_font.render(label, True, (255, 239, 198))
