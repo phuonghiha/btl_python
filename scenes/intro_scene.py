@@ -13,7 +13,7 @@ from settings import (
     RED,
 )
 
-# Dùng chung ảnh nền và font đã khai báo trong start_scene.py
+
 from scenes.start_scene import (
     load_font,
     load_background,
@@ -32,7 +32,7 @@ class IntroScene(Scene):
         self.dialogue_font = content1(27)
         self.button_font = content1(23)
 
-        # Nút nhận chiếu chỉ
+        
         self.accept_button = pygame.Rect(
             SCREEN_WIDTH // 2 - 275,
             SCREEN_HEIGHT - 115,
@@ -40,7 +40,7 @@ class IntroScene(Scene):
             65,
         )
 
-        # Nút từ chối
+        
         self.refuse_button = pygame.Rect(
             SCREEN_WIDTH // 2 + 20,
             SCREEN_HEIGHT - 115,
@@ -62,21 +62,21 @@ class IntroScene(Scene):
             and event.button == 1
         ):
             if self.accept_button.collidepoint(event.pos):
-                # Nhận chiếu chỉ -> phòng công chúa
+                
                 self.game.change_scene("world_map")
 
             elif self.refuse_button.collidepoint(event.pos):
-                # Từ chối -> màn hình bắt đầu
+                
                 self.game.change_scene("start")
 
     def update(self, dt):
         pass
 
     def draw(self, screen):
-        # Vẽ nền giấy da
+        
         screen.blit(self.background, (0, 0))
 
-        # Khung chiếu chỉ
+        
         panel = pygame.Rect(
             90,
             45,
@@ -98,7 +98,7 @@ class IntroScene(Scene):
             border_radius=18,
         )
 
-        # Tiêu đề
+        
         title = self.title_font.render(
             "Chiếu chỉ hoàng gia",
             True,
@@ -112,7 +112,7 @@ class IntroScene(Scene):
             ),
         )
 
-        # Nội dung lời thoại
+        
         y = 205
 
         for line in self.dialogue_lines:
@@ -131,7 +131,7 @@ class IntroScene(Scene):
 
             y += 45
 
-        # Vẽ nút nhận chiếu chỉ
+        
         pygame.draw.rect(
             screen,
             DARK_GREEN,
@@ -152,7 +152,7 @@ class IntroScene(Scene):
             ),
         )
 
-        # Vẽ nút từ chối
+        
         pygame.draw.rect(
             screen,
             RED,
