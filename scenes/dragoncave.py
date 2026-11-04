@@ -41,7 +41,7 @@ class DragonCaveScene(BaseScene):
     def __init__(self, game):
         super().__init__(game)
         self._load_assets()
-        # Dùng cùng cỡ chữ với hội thoại ở Rừng Tinh Linh và Phòng Công Chúa.
+        
         self._font = content1(23)
         self._small_font = content1(18)
         self._title_font = title(22)
@@ -161,7 +161,7 @@ class DragonCaveScene(BaseScene):
             max(84, int(142 * self.ui_scale)),
         )
         self.battle = self._make_puzzle()
-        # Retain the original puzzle attribute for the existing battle tests/tools.
+        
         self.puzzle = self.battle
         self.gem_puzzle = None
         self.knight = Knight(
@@ -215,7 +215,7 @@ class DragonCaveScene(BaseScene):
 
     
     def _begin_boss_dialogue(self):
-        # Xóa hẳn scene câu đố cũ, không giữ lại đối tượng cũ.
+        
         self.gem_puzzle = None
 
         self.game_state.dragon_cave_puzzle_solved = True
@@ -296,8 +296,8 @@ class DragonCaveScene(BaseScene):
         if super().handle_event(event):
             return
 
-        # Khi chiến đấu, chuyển tất cả sự kiện chuột
-        # sang trò chơi kéo khối, bao gồm nhấn, di chuyển và thả chuột.
+        
+        
         if self.phase == "battle":
             self.battle.handle_event(event)
             return
@@ -682,7 +682,7 @@ class DragonCaveScene(BaseScene):
         vertical_gap = int(4 * scale)
 
         if speaker == "Công chúa":
-            # Place her line just above and to the right of the prince's head.
+            
             head_x = int(self.knight.x + knight_size[0] * 0.50)
             box_x = min(self.width - box_width - gap, head_x + gap)
             character_top = int(self.knight.y)
