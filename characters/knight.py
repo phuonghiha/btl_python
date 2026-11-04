@@ -114,7 +114,7 @@ class Knight:
         return "turn_right"
 
     def update(self, dt):
-        # Đang tấn công: phát animation đến hết.
+        
         if self.is_attacking:
             self.animation.update(dt)
 
@@ -124,7 +124,7 @@ class Knight:
 
             return
 
-        # Di chuyển đến vị trí chuột đã chọn.
+        
         if self.target is not None:
             target_x, target_y = self.target
             dx = target_x - self.x
