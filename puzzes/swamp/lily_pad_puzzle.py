@@ -28,9 +28,9 @@ class LilyPadPuzzle:
     alignment from each notch bisector to the next route point.
     """
 
-    # Tọa độ theo pixel màn hình (1280x720), sắp theo thứ tự bước đi.
-    # Mỗi dòng là (x, y, kích thước): bạn có thể chỉnh trực tiếp tại đây.
-    # Screen pixels for a 1280x720 window; tuples are (x, y, size), in step order.
+    
+    
+    
     _ROUTE_LAYOUT = (
         (518, 401, 86),
         (448, 295, 72),
@@ -43,8 +43,8 @@ class LilyPadPuzzle:
         (1001, 278, 82),
     )
 
-    # Lá sai: (x, y, kích thước), cũng dùng pixel màn hình.
-    # Decoy pads: (x, y, size), also in screen pixels.
+    
+    
     _DECOY_LAYOUT = (
         (104, 334, 70),
         (273, 267, 82),
@@ -156,8 +156,8 @@ class LilyPadPuzzle:
         if self._current_route_index is None:
             return pad.route_index == next_route_index
 
-        # Allow revisiting any already-cleared pad, plus only the next
-        # forward step so the player cannot skip ahead through the route.
+        
+        
         return (
             pad.route_index <= self._current_route_index
             or pad.route_index == next_route_index
