@@ -21,8 +21,8 @@ class DragonBlockGame:
 
     MAX_HP = 100
 
-    # Match each piece color to its fixed length: white=1, green=2,
-    # red=3, yellow=4.
+    
+    
     PIECE_TYPES = {
         "white": {"length": 1, "color": (248, 239, 222)},
         "green": {"length": 2, "color": (112, 148, 112)},
@@ -152,7 +152,7 @@ class DragonBlockGame:
         if length not in self.COLORS:
             raise ValueError(f"Unsupported piece length: {length}")
 
-        # The color always follows the length, even when a caller supplies a color.
+        
         color = self.COLORS[length]
 
         piece = {
@@ -1929,7 +1929,7 @@ class DragonBlockGame:
         radius = max(12, int((17 + 8 * math.sin(self.fireball_time / 45.0)) * self.ui_scale))
         layer = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
 
-        # Trail of embers behind the moving fireball.
+        
         for index in range(5, 0, -1):
             tail_progress = max(0.0, progress - index * 0.035)
             tail_eased = tail_progress * tail_progress * (3 - 2 * tail_progress)
@@ -1984,7 +1984,7 @@ class DragonBlockGame:
             border = (105, 150, 205)
             title_color = (190, 220, 255)
         else:
-            # Place the compact bubble to the right of the dragon.
+            
             dragon_center_x = self.BOARD_X + self.COLS * self.CELL // 2
             dragon_right = dragon_center_x + self.dragon_image.get_width() // 2
             x = min(
