@@ -56,10 +56,10 @@ class Game:
         self.current_scene_id = None
         self._pending_scene_resets = set()
 
-        # Khu vực trước khi mở bản đồ
+        
         self.previous_scene_id = "princess_room"
 
-        # Khởi tạo các scene
+        
         self.scenes = {
             "start": StartScene(self),
             "intro": IntroScene(self),
@@ -85,7 +85,7 @@ class Game:
                 reset()
             self._pending_scene_resets.discard(scene_id)
 
-        # Ghi nhớ khu vực trước khi mở bản đồ
+        
         if (
             scene_id == "world_map"
             and self.current_scene_id not in (
@@ -103,7 +103,7 @@ class Game:
         self.game_state.current_scene = scene_id
 
     def restart_game(self):
-        # Đưa toàn bộ trạng thái về ban đầu
+        
         self.game_state.reset()
         self._pending_scene_resets = {
             scene_id
@@ -128,7 +128,7 @@ class Game:
                     self.running = False
                     break
 
-                # ESC để quay lại khu vực trước đó
+                
                 if (
                     event.type == pygame.KEYDOWN
                     and event.key == pygame.K_ESCAPE
@@ -146,7 +146,7 @@ class Game:
 
             self.current_scene.update(dt)
 
-            # Kiểm tra máu sau khi cập nhật scene
+            
             if (
                 self.game_state.health <= 0
                 and self.current_scene_id != "game_over"
