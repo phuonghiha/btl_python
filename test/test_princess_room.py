@@ -32,7 +32,7 @@ class PrincessRoomTestHarness:
         elif scene_id == "princess_room":
             self.current_scene_id = scene_id
         else:
-            # Stop the room-only test when it requests an unimplemented scene.
+            
             self.next_scene_id = scene_id
 
 
@@ -81,7 +81,7 @@ def main():
             active_scene.draw(screen)
 
             if harness.next_scene_id:
-                # The room requested a scene this test harness does not run.
+                
                 running = False
 
             pygame.display.flip()

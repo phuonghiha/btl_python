@@ -38,13 +38,13 @@ while running:
                 )
 
             elif event.key == pygame.K_SPACE:
-                # Space: kiểm thử animation tấn công
+                
                 knight.attack()
 
-    # Cập nhật nhân vật
+    
     knight.update(dt)
 
-    # Vẽ màn hình
+    
     screen.fill((190, 220, 190))
 
     knight.draw(screen, (128, 128))

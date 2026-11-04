@@ -209,7 +209,7 @@ class ForestScene(BaseScene):
             SPIRIT_GEM_IMAGE, (300, 300)
         )
 
-        # self._init_story_state()
+        
 
         self.dialogs_with_scale = [
             (
@@ -371,8 +371,8 @@ class ForestScene(BaseScene):
 
         self._init_story_state()
 
-        # Chỉ khóa nội dung khi đã có đá chúc phúc VÀ đã hoàn thành câu đố rừng.
-        # Chỉ có viên đá chưa đủ để đánh dấu toàn bộ nhiệm vụ đã xong.
+        
+        
         self.already_completed = (
             self._has_spirit_gemstone()
             and self._forest_puzzle_completed()
@@ -381,9 +381,9 @@ class ForestScene(BaseScene):
             self.scene = "completed_return"
 
 
-    # =====================================================
-    # KHỞI TẠO TRẠNG THÁI
-    # =====================================================
+    
+    
+    
 
     def _init_story_state(self):
         self.scene = "approach"
@@ -413,13 +413,13 @@ class ForestScene(BaseScene):
         self.dialogs = self.dialogs_without_scale
 
     def _set_state(self, name, value):
-        # Chỉ ghi các cờ đã khai báo chính thức trong GameState.
+        
         if name not in {"forest_spirit_met", "forest_reset_pending"}:
             raise ValueError(f"Trạng thái không được khai báo trong GameState: {name}")
         setattr(self.game_state, name, value)
 
     def _get_state(self, name, default=False):
-        # Không đọc thuộc tính tự tạo/ngầm định ngoài GameState.
+        
         if not hasattr(self.game_state, name):
             return default
         return getattr(self.game_state, name)
@@ -461,24 +461,24 @@ class ForestScene(BaseScene):
             self._clear_pending_reset()
             self.reset()
 
-    # =====================================================
-    # GAME STATE
-    # =====================================================
+    
+    
+    
 
     def _has_dragon_scale(self):
-        # PrincessRoomScene ghi đúng ID này vào GameState.inventory.
+        
         return self.game_state.has_item("red_dragon_scale")
 
     def _has_spirit_gemstone(self):
-        # Đá chúc phúc chỉ được xem là đã có khi ID tồn tại trong inventory.
+        
         return self.game_state.has_item("forest_gemstone")
 
     def _select_story_branch(self):
         self.has_dragon_scale = self._has_dragon_scale()
         previously_met = bool(self._get_state("forest_spirit_met", False))
 
-        # Đã nhận đá chúc phúc và hoàn thành nhiệm vụ: trường hợp 5,
-        # quay lại không phát lại hội thoại hoặc câu đố.
+        
+        
         if self._has_spirit_gemstone() and self._forest_puzzle_completed():
             self.already_completed = True
             self.scene = "completed_return"
@@ -524,9 +524,9 @@ class ForestScene(BaseScene):
             SPIRIT_GEM_IMAGE
         )
 
-    # =====================================================
-    # LOAD ẢNH
-    # =====================================================
+    
+    
+    
 
     def _load_item_image(self, path, size):
         image = load_image(path)
@@ -550,9 +550,9 @@ class ForestScene(BaseScene):
         surface.fill((35, 75, 45))
         return surface
 
-    # =====================================================
-    # TEXT
-    # =====================================================
+    
+    
+    
 
     def _text(self, screen, text, font, color, center):
         image = font.render(text, True, color)
@@ -626,9 +626,9 @@ class ForestScene(BaseScene):
             (rect.right - 105, rect.y + 30),
         )
 
-    # =====================================================
-    # NHÂN VẬT
-    # =====================================================
+    
+    
+    
 
     def _update_walk(self, dt):
         if len(self.knight_walk_frames) <= 1:
@@ -717,9 +717,9 @@ class ForestScene(BaseScene):
         screen.blit(glow, glow_rect)
         screen.blit(image, rect)
 
-    # =====================================================
-    # SƯƠNG
-    # =====================================================
+    
+    
+    
 
     def _mist(self, screen):
         layer = pygame.Surface(self.screen_size, pygame.SRCALPHA)
@@ -831,9 +831,9 @@ class ForestScene(BaseScene):
             (self.w // 2, self.h - 35),
         )
 
-    # =====================================================
-    # VẬT PHẨM
-    # =====================================================
+    
+    
+    
 
     def _draw_item_reveal(self, screen, kind):
         shade = pygame.Surface(self.screen_size, pygame.SRCALPHA)
@@ -891,8 +891,8 @@ class ForestScene(BaseScene):
                 image, (display_size, display_size)
             )
 
-            # The gem artwork has an off-center visual mass inside its image
-            # bounds, so compensate slightly to align the visible orb with the ring.
+            
+            
             visual_center = (
                 cx - int(self.w * 0.01),
                 cy - int(self.h * 0.006),
@@ -947,9 +947,9 @@ class ForestScene(BaseScene):
         if kind == "gem":
             self._grant_blessing()
 
-    # =====================================================
-    # CHUYỂN HỘI THOẠI
-    # =====================================================
+    
+    
+    
 
     def _next(self):
         if self.scene == "approach":
@@ -1029,26 +1029,26 @@ class ForestScene(BaseScene):
 
             if self.dialog_index >= len(self.dialogs):
                 self.scene = "ending"
-                # Kết thúc thoại ngay tại đây. Các lần click tiếp theo
-                # không phát lại câu thoại cuối hay chuyển scene ngoài ý muốn.
+                
+                
                 if not self.has_dragon_scale:
                     self.finished = True
 
         elif self.scene == "ending":
             self.finished = True
 
-    # =====================================================
-    # INPUT
-    # =====================================================
+    
+    
+    
 
     def handle_event(self, event):
         if self.already_completed:
             return
 
-        # Chỉ đánh dấu cần phát thoại quay lại khi người chơi thật sự
-        # rời màn Forest bằng nút bản đồ sau khi thoại đã kết thúc.
-        # Không đặt cờ ngay lúc thoại kết thúc, nếu không update() sẽ
-        # khởi động lại thoại ngay trên chính màn ending.
+        
+        
+        
+        
         if (
             self.finished
             and not self.has_dragon_scale
@@ -1066,9 +1066,9 @@ class ForestScene(BaseScene):
                 self.puzzle.handle_event(event)
             return
 
-        # Sau khi kết thúc nhánh chưa có vảy rồng, giữ màn ending
-        # cho đến khi người chơi mở bản đồ. Thoại quay lại được tự mở
-        # trong update() ngay khi quay lại Forest, không cần click kích hoạt.
+        
+        
+        
         if self.finished and not self.has_dragon_scale:
             return
 
@@ -1080,14 +1080,14 @@ class ForestScene(BaseScene):
             if event.button == 1:
                 self._next()
 
-    # =====================================================
-    # UPDATE
-    # =====================================================
+    
+    
+    
 
     def update(self, dt):
-        # Khi người chơi đã rời Forest bằng nút bản đồ, cờ pending
-        # vẫn được giữ trong game_state. Khi quay lại Forest, bắt đầu
-        # thoại quay lại ngay trong update đầu tiên.
+        
+        
+        
         if (
             self.game.current_scene_id == "spirit_forest"
             and not self.already_completed
@@ -1107,18 +1107,18 @@ class ForestScene(BaseScene):
                 self.transitioned = False
                 self.gem_revealed = self._has_spirit_gemstone()
 
-        # Trường hợp 5: đã hoàn thành rừng và có đá chúc phúc,
-        # quay lại chỉ giữ nền rừng, không phát sinh sự kiện mới.
+        
+        
         if self.already_completed:
             return
 
-        # Nhánh không có vảy rồng:
-        # Giữ nguyên màn hình ending, chờ người chơi mở bản đồ.
+        
+        
         if self.finished and not self.has_dragon_scale:
             return
 
-        # Nhánh có vảy rồng:
-        # Kết thúc hội thoại thì chuyển sang Đầm Lầy Độc.
+        
+        
         if self.finished and self.has_dragon_scale:
             if not self.transitioned:
                 self.transitioned = True
@@ -1151,7 +1151,7 @@ class ForestScene(BaseScene):
                 self.puzzle_done_time += dt
 
                 if self.puzzle_done_time > 1.6:
-                    # Kiểm tra túi đồ ngay sau khi hoàn thành puzzle.
+                    
                     self._select_story_branch()
 
                     self.scene = "spirit_reveal"
@@ -1169,9 +1169,9 @@ class ForestScene(BaseScene):
         elif self.scene == "gem_reveal":
             self.item_reveal_time += dt
 
-    # =====================================================
-    # DRAW
-    # =====================================================
+    
+    
+    
 
     def draw(self, screen):
         if self.scene == "puzzle" and self.puzzle is not None:
@@ -1421,9 +1421,9 @@ class ForestScene(BaseScene):
 
         super().draw(screen)
 
-    # =====================================================
-    # SCENE CONTROL
-    # =====================================================
+    
+    
+    
 
     def is_finished(self):
         return self.finished
@@ -1442,8 +1442,8 @@ class ForestScene(BaseScene):
         if self.has_dragon_scale:
             return "poison_swamp"
 
-        # Không tự chuyển về princess_room.
-        # Người chơi sẽ mở bản đồ và tự chọn Hoàng cung.
+        
+        
         return None
 
 

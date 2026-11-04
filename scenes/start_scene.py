@@ -13,12 +13,12 @@ from settings import (
     WHITE,
 )
 
-# Đường dẫn gốc của dự án
+
 BASE_DIR = os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
 )
 
-# Ảnh giấy da
+
 BACKGROUND_PATH = os.path.join(
     BASE_DIR,
     "assets",
@@ -26,7 +26,7 @@ BACKGROUND_PATH = os.path.join(
     "parchment.jpg",
 )
 
-# Font tiêu đề
+
 TITLE_FONT_PATH = os.path.join(
     BASE_DIR,
     "assets",
@@ -35,7 +35,7 @@ TITLE_FONT_PATH = os.path.join(
     "CinzelDecorative-Black.otf",
 )
 
-# Font lời thoại và nút
+
 DIALOGUE_FONT_PATH = os.path.join(
     BASE_DIR,
     "assets",
@@ -129,7 +129,7 @@ class StartScene(Scene):
             ),
         )
 
-        # Vẽ nút bắt đầu
+        
         pygame.draw.rect(
             screen,
             DARK_GREEN,

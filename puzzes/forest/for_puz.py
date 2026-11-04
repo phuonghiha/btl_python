@@ -64,14 +64,14 @@ class Piece:
             self.original_points
         )
 
-        # Bề mặt gỗ cho mảnh ghép ở ngoài khay.
+        
         pygame.draw.polygon(
             self.wood_surface,
             (139, 88, 43, 255),
             self.original_points
         )
 
-        # Chỉ giữ phần gỗ nằm bên trong mảnh.
+        
         self.wood_surface.blit(
             mask, (0, 0),
             special_flags=pygame.BLEND_RGBA_MULT
@@ -84,7 +84,7 @@ class Piece:
             3
         )
 
-        # Cắt đúng vùng ảnh ngôi nhà tương ứng với mảnh.
+        
         crop = pygame.Surface(size, pygame.SRCALPHA)
         crop.blit(
             house_texture,
@@ -147,8 +147,8 @@ class Piece:
         if self.alpha <= 0:
             return
 
-        # Ngoài khay: gỗ.
-        # Đặt đúng vị trí: hiện ảnh ngôi nhà.
+        
+        
         current_surface = (
             self.house_surface if self.correct
             else self.wood_surface
@@ -240,14 +240,14 @@ class TangramGame:
         self.fade_alpha = 255
 
     def load_and_process_assets(self):
-        # Ảnh gốc có ngôi nhà.
+        
         self.bg_with_house = pygame.transform.smoothscale(
             pygame.image.load(self.image_path).convert(),
             (self.WIDTH, self.HEIGHT)
         )
 
-        # Ảnh nền cây cổ thụ KHÔNG có ngôi nhà.
-        # Hãy đặt ảnh nền sạch tại đường dẫn này.
+        
+        
         root = os.path.dirname(
             os.path.dirname(
                 os.path.dirname(
@@ -269,7 +269,7 @@ class TangramGame:
             (self.WIDTH, self.HEIGHT)
         )
 
-        # Cắt vùng ngôi nhà từ ảnh gốc làm ảnh cho các mảnh ghép.
+        
         crop_x = int(self.WIDTH * 0.58)
         crop_y = int(self.HEIGHT * 0.10)
         crop_w = int(self.WIDTH * 0.28)
@@ -355,11 +355,11 @@ class TangramGame:
                 self.selected_piece.update_snap()
                 self.selected_piece = None
 
-        # elif (
-        #     event.type == pygame.KEYDOWN
-        #     and event.key == pygame.K_r
-        # ):
-        #     self.reset()
+        
+        
+        
+        
+        
 
     def update(self):
         if self.selected_piece is not None:
@@ -368,7 +368,7 @@ class TangramGame:
             self.selected_piece.x = mouse_x - self.selected_piece.offset_x
             self.selected_piece.y = mouse_y - self.selected_piece.offset_y
 
-            # Giữ mảnh ghép nằm trọn trong màn hình khi kéo.
+            
             self.selected_piece.x = max(
                 0,
                 min(
@@ -406,13 +406,13 @@ class TangramGame:
                 )
 
     def draw(self):
-        # if self.completed and self.flash_alpha < 180:
-        #     self.screen.blit(self.bg_with_house, (0, 0))
-        # else:
-        #     self.screen.blit(self.bg_no_house, (0, 0))
-        #
-        #     if not self.completed:
-        #         self.screen.blit(self.dark, (0, 0))
+        
+        
+        
+        
+        
+        
+        
         if self.completed:
             self.screen.blit(self.bg_with_house, (0, 0))
         else:

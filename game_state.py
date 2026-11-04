@@ -17,7 +17,7 @@ class GameState:
         self.has_poison_protection = False
         self.has_holy_sword = False
 
-        # Trạng thái hội thoại Rừng Tinh Linh được lưu tập trung tại GameState.
+        
         self.forest_spirit_met = False
         self.forest_reset_pending = False
 

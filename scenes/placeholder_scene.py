@@ -55,7 +55,7 @@ class PlaceholderScene(Scene):
             ),
         )
 
-        # Thanh máu
+        
         bar_x = 40
         bar_y = 35
         bar_width = 250
