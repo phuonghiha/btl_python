@@ -18,7 +18,7 @@ BG_PATH = os.path.join(ASSETS, "images", "sence_1", "background.png")
 SCENE_ASSETS = os.path.join(ASSETS, "images", "sence_1")
 ZOOM_FACTOR = 5
 KNIGHT_DRAW_SIZE = (300, 414)
-# The room floor starts below the bed, bedding, and the balcony sky area.
+
 WALKABLE_FLOOR = pygame.Rect(0, 520, SCREEN_WIDTH, SCREEN_HEIGHT - 520)
 BED_EDGE_X = 610
 BED_CLEARANCE_Y = 630
@@ -515,8 +515,8 @@ class PrincessRoomScene(BaseScene):
 
     def draw(self, screen):
         screen.blit(self.background, (0, 0))
-        # Visible interactables use the room's existing art where possible;
-        # missing prop art is drawn as simple, readable fantasy placeholders.
+        
+        
         self._draw_chest(screen)
         if self.knight:
             self.knight.draw(screen, size=KNIGHT_DRAW_SIZE)
